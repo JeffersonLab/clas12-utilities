@@ -1,0 +1,14 @@
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15108-15109 fcup_15108-15109.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15110-15112 fcup_15110-15112.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15113-15113 fcup_15113-15113.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15114-15114 fcup_15114-15114.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15115-15120 fcup_15115-15120.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15121-15121 fcup_15121-15121.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15122-15127 fcup_15122-15127.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15128-15129 fcup_15128-15129.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15130-15132 fcup_15130-15132.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15133-15133 fcup_15133-15133.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15134-15134 fcup_15134-15134.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15135-15136 fcup_15135-15136.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15137-15140 fcup_15137-15140.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/fcup -r 15141- fcup_15141-None.txt

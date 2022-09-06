@@ -1,0 +1,30 @@
+clasrun@clonpc13:mya2ccdb> python mya2ccdb.py 2022-01-30_18:10:51  2022-01-31_08:22:00
+Start:   2022-01-30_18:10:51
+End:     2022-01-31_08:22:00
+
+Faraday Cup Offsets::::::::::::::::::::::::
+15778-15780 {'slope': 906.2, 'offset': 318.5}
+15781-None {'slope': 906.2, 'offset': 339.5}
+
+Beam Blocker Attenuations::::::::::::::::::
+15778-None {'slope': 906.2, 'atten': 11.6961}
+
+
+SLM Offsets::::::::::::::::::::::::::::::::
+15778-15778 {'slope': 1.0, 'atten': 0.0, 'offset': 12462063.3}
+15779-15779 {'slope': 1.0, 'atten': 0.0, 'offset': 13846884.8}
+15780-15780 {'slope': 1.0, 'atten': 0.0, 'offset': 13850421.0}
+15781-15781 {'slope': 1.0, 'atten': 0.0, 'offset': 13842997.5}
+15782-15782 {'slope': 1.0, 'atten': 0.0, 'offset': 13850399.0}
+15783-None {'slope': 1.0, 'atten': 0.0, 'offset': 13848252.2}
+
+
+15778-15780 {'slope': 906.2, 'atten': 11.6961, 'offset': 318.5}
+15781-None {'slope': 906.2, 'atten': 11.6961, 'offset': 339.5}
+15778-15778 {'slope': 1.0, 'atten': 0.0, 'offset': 12462063.3}
+15779-15779 {'slope': 1.0, 'atten': 0.0, 'offset': 13846884.8}
+15780-15780 {'slope': 1.0, 'atten': 0.0, 'offset': 13850421.0}
+15781-15781 {'slope': 1.0, 'atten': 0.0, 'offset': 13842997.5}
+15782-15782 {'slope': 1.0, 'atten': 0.0, 'offset': 13850399.0}
+15783-None {'slope': 1.0, 'atten': 0.0, 'offset': 13848252.2}
+15778-15784 {'hwp': 1}

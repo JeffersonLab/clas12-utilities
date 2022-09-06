@@ -1,0 +1,7 @@
+clasrun@clonpc13:mya2ccdb> python mya2ccdb.py 2022-02-01_20:28:52   2022-02-01_21:28:59
+Start:   2022-02-01_20:28:52
+End:     2022-02-01_21:28:59
+Traceback (most recent call last):
+  File "mya2ccdb.py", line 198, in <module>
+    offsets[len(offsets)-1].runMax=None
+IndexError: list index out of range

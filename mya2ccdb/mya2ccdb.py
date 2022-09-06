@@ -160,6 +160,8 @@ offsets,attens,slm_offsets=[],[],[]
 # register attenuation changes:
 tmp = copy.deepcopy(runData)
 firstRun,firstData = tmp.popitem(False)
+if len(tmp)==0:
+  attens.append(FcupCcdbEntry(firstRun,firstRun,{'atten':firstData[0].atten}))
 while len(tmp)>0:
   thisRun,thisData = tmp.popitem(False)
   # consider only the first attenuation in each run:
@@ -175,6 +177,9 @@ while len(tmp)>0:
 # register offset changes, with a running-average:
 tmp = copy.deepcopy(runData)
 firstRun,firstData = tmp.popitem(False)
+if len(tmp)==0:
+  offsets.append(FcupCcdbEntry(firstRun,firstRun,{'offset':round(getOffsetAverage(firstData),1)}))
+
 while len(tmp)>0:
   lastRun,lastData = tmp.popitem(False)
   firstOffset = getOffsetAverage(firstData)
@@ -186,6 +191,8 @@ while len(tmp)>0:
 # register slm_offset changes, with a running-average:
 tmp = copy.deepcopy(runData)
 firstRun,firstData = tmp.popitem(False)
+if len(tmp)==0:
+  slm_offsets.append(SlmCcdbEntry(firstRun,firstRun,{'offset':round(getSlmOffsetAverage(firstData),1)}))
 while len(tmp)>0:
   lastRun,lastData = tmp.popitem(False)
   firstOffset = getSlmOffsetAverage(firstData)
@@ -232,6 +239,8 @@ while len(tmp.keys())>0:
       break
   data=dict(offset,**atten)
   if previous is not None and previous!=data or len(tmp.keys())==0:
+    if previous is None:
+      previous=data
     f=FcupCcdbEntry(runStart,run-1,previous)
     if len(tmp.keys())==0:
       f.runMax=None
@@ -255,6 +264,8 @@ while len(tmp.keys())>0:
       break
   data=dict(offset)
   if previous is not None and previous!=data or len(tmp.keys())==0:
+    if previous is None:
+      previous=data
     f=SlmCcdbEntry(runStart,run-1,previous)
     if len(tmp.keys())==0:
       f.runMax=None

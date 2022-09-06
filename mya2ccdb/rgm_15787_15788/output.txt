@@ -1,0 +1,18 @@
+clasrun@clonpc13:mya2ccdb> python mya2ccdb.py 2022-01-31_15:16:26   2022-01-31_15:46:50 
+Start:   2022-01-31_15:16:26
+End:     2022-01-31_15:46:50
+
+Faraday Cup Offsets::::::::::::::::::::::::
+15787-None {'slope': 906.2, 'offset': 321.0}
+
+Beam Blocker Attenuations::::::::::::::::::
+15787-None {'slope': 906.2, 'atten': 1.0}
+
+
+SLM Offsets::::::::::::::::::::::::::::::::
+15787-None {'slope': 1.0, 'atten': 0.0, 'offset': 13720095.5}
+
+
+15787-None {'slope': 906.2, 'atten': 1.0, 'offset': 321.0}
+15787-None {'slope': 1.0, 'atten': 0.0, 'offset': 13720095.5}
+15787-15788 {'hwp': 1}

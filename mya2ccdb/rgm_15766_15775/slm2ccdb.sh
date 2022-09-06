@@ -1,0 +1,9 @@
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/slm -r 15766-15766 slm_15766-15766.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/slm -r 15767-15767 slm_15767-15767.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/slm -r 15768-15768 slm_15768-15768.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/slm -r 15769-15769 slm_15769-15769.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/slm -r 15770-15770 slm_15770-15770.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/slm -r 15771-15771 slm_15771-15771.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/slm -r 15772-15772 slm_15772-15772.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/slm -r 15773-15773 slm_15773-15773.txt
+ccdb -c mysql://clas12writer:geom3try@clasdb/clas12 add runcontrol/slm -r 15774- slm_15774-None.txt

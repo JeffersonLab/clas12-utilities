@@ -1,0 +1,32 @@
+clasrun@clonpc13:mya2ccdb> python mya2ccdb.py 2021-12-05_08:33:38   2021-12-06_07:50:47
+Start:   2021-12-05_08:33:38
+End:     2021-12-06_07:50:47
+
+Faraday Cup Offsets::::::::::::::::::::::::
+15312-15318 {'slope': 906.2, 'offset': 324.9}
+15319-15319 {'slope': 906.2, 'offset': 358.6}
+15320-15324 {'slope': 906.2, 'offset': 403.8}
+15325-None {'slope': 906.2, 'offset': 417.5}
+
+Beam Blocker Attenuations::::::::::::::::::
+15312-None {'slope': 906.2, 'atten': 8.183}
+
+
+SLM Offsets::::::::::::::::::::::::::::::::
+15312-15317 {'slope': 1.0, 'atten': 0.0, 'offset': 13895888.2}
+15318-15318 {'slope': 1.0, 'atten': 0.0, 'offset': 13894500.0}
+15319-15319 {'slope': 1.0, 'atten': 0.0, 'offset': 13894801.8}
+15320-15320 {'slope': 1.0, 'atten': 0.0, 'offset': 13875430.4}
+15321-15321 {'slope': 1.0, 'atten': 0.0, 'offset': 13887677.1}
+15322-15322 {'slope': 1.0, 'atten': 0.0, 'offset': 13889079.5}
+15323-15323 {'slope': 1.0, 'atten': 0.0, 'offset': 13890387.1}
+15324-15324 {'slope': 1.0, 'atten': 0.0, 'offset': 13884705.1}
+15325-15325 {'slope': 1.0, 'atten': 0.0, 'offset': 13877726.9}
+15326-15326 {'slope': 1.0, 'atten': 0.0, 'offset': 13850344.5}
+15327-None {'slope': 1.0, 'atten': 0.0, 'offset': 13873170.4}
+
+
+Traceback (most recent call last):
+  File "mya2ccdb.py", line 233, in <module>
+    data=dict(offset,**atten)
+TypeError: type object argument after ** must be a mapping, not NoneType
