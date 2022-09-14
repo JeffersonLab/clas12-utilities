@@ -208,12 +208,11 @@ slm_offsets[len(slm_offsets)-1].runMax=None
 ###################################################################
 ###################################################################
 
-print('\nFaraday Cup Offsets::::::::::::::::::::::::')
+print('\nFaraday Cup Offset Changes::::::::::::::::::::::::')
 print('\n'.join([str(x) for x in offsets]))
-print('\nBeam Blocker Attenuations::::::::::::::::::')
+print('\nBeam Blocker Attenuation Changes::::::::::::::::::')
 print('\n'.join([str(x) for x in attens]))
-print('')
-print('\nSLM Offsets::::::::::::::::::::::::::::::::')
+print('\nSLM Offset Changes::::::::::::::::::::::::::::::::')
 print('\n'.join([str(x) for x in slm_offsets]))
 print('')
 print('')
@@ -221,6 +220,7 @@ print('')
 ###################################################################
 ###################################################################
 
+print('\nFaraday Cup Tables::::::::::::::::::::::::')
 fcmd=open('fcup2ccdb.sh','w')
 tmp = copy.deepcopy(runData)
 runStart=tmp.keys()[0]
@@ -250,6 +250,7 @@ while len(tmp.keys())>0:
   previous=data
 fcmd.close()
 
+print('\nSLM Tables::::::::::::::::::::::::')
 fcmd=open('slm2ccdb.sh','w')
 tmp = copy.deepcopy(runData)
 runStart=tmp.keys()[0]
@@ -278,6 +279,7 @@ fcmd.close()
 ###################################################################
 ###################################################################
 
+print('\nHWP Tables::::::::::::::::::::::::')
 fcmd=open('hwp2ccdb.sh','w')
 runStart,hwpStart=hwpData.popitem(False)
 while len(hwpData)>0:
