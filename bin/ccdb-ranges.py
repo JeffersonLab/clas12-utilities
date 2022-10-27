@@ -57,7 +57,7 @@ class Range():
             print('ERROR:  File already exists:  '+self.filename)
             print('ABORTED.')
             sys.exit(1)
-        print('Writing file:  '+self.filename)
+        print('# Writing file:  '+self.filename)
         with open(self.filename,'w') as f:
             if comment is not None:
                 f.write('#'+comment+'\n')
@@ -122,9 +122,9 @@ for run in range(args.min, args.max+1):
     else:
         raise Exception('This should be impossible.')
 
-print('\nEffective Run Ranges ::::::::::::::::::::::::::::::')
-print(Range.header()+'\n'+'\n'.join([str(r) for r in ranges]))
-print(':::::::::::::::::::::::::::::::::::::::::::::::::::\n')
+print('\n# Effective Run Ranges ::::::::::::::::::::::::::::::')
+print('#'+Range.header()+'\n#'+'\n#'.join([str(r) for r in ranges]))
+print('#:::::::::::::::::::::::::::::::::::::::::::::::::::\n')
 
 if args.dump:
     for x in ranges:
