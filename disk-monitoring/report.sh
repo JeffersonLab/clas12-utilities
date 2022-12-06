@@ -45,7 +45,7 @@ echo >> perms.txt
 cat perms2.txt >> perms.txt
 rm -f perms2.txt
 
-scp -p *.txt *.html clas12@ifarm1901:/u/group/clas/www/clasweb-2015/html/clas12offline/disk/work
+scp -p perms.txt du.txt rg-?.html users.html clas12@ifarm1901:/u/group/clas/www/clasweb-2015/html/clas12offline/disk/work
 
 echo "FINISHED." >> log
 date >> log
