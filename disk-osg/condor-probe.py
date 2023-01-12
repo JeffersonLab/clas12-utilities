@@ -233,23 +233,19 @@ class Matcher():
       else:
         self.values.append(v)
   def matches(self, value):
-    if len(self.values) > 0 and str(value) not in self.values:
+    if str(value) in self.antivalues:
       return False
-    if len(self.antivalues) > 0 and str(value) in self.antivalues:
-      return False
-    return True
+    if str(value) in self.values:
+      return True
+    return len(self.values)==0 
   def pattern_matches(self, value):
-    for v in self.values:
-      found = False
-      if v.find(str(value)) >= 0:
-        found = True
-        break
-      if not found:
-        return False
     for v in self.antivalues:
       if v.find(str(value)) >= 0:
         return False
-    return True
+    for v in self.values:
+      if v.find(str(value)) >= 0:
+        return True
+    return len(self.values)==0
 
 condor_matcher = None
 site_matcher = None
