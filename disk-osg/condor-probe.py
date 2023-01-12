@@ -133,14 +133,7 @@ def condor_history(args, constraints=[]):
 def condor_munge(args):
   '''Assign custom parameters based on parsing some condor parameters'''
   for condor_id,job in condor_data.items():
-    job['user'] = None
-    job['gemc'] = None
-    job['host'] = None
-    job['condor'] = None
-    job['stderr'] = None
-    job['stdout'] = None
-    job['eff'] = None
-    job['ceff'] = None
+    job.update({'user':None,'gemc':None,'host':None,'condor':None,'stderr':None,'stdout':None,'eff':None,'ceff':None})
     job['generator'] = get_generator(job)
     job['wallhr'] = condor_calc_wallhr(job)
     job['condorid'] = '%d.%d'%(job['ClusterId'],job['ProcId'])
