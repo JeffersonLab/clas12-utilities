@@ -131,7 +131,7 @@ def stddev(alist):
   else:
     return null_field
 
-summary_table = condor.table.CondorTable()
+summary_table = CondorTable()
 summary_table.add_column('condor','ClusterId',9)
 summary_table.add_column('gemc','gemc',6)
 summary_table.add_column('submit','QDate',12)
@@ -146,7 +146,7 @@ summary_table.add_column('util','eff',4)
 summary_table.add_column('ceff','ceff',4)
 summary_table.add_column('att','att',4)
 
-site_table = condor.table.CondorTable()
+site_table = CondorTable()
 site_table.add_column('site','MATCH_GLIDEIN_Site',26)
 site_table.add_column('total','total',8,tally='sum')
 site_table.add_column('done','done',8,tally='sum')
@@ -157,7 +157,7 @@ site_table.add_column('wallhr','wallhr',6)
 site_table.add_column('stddev','ewallhr',7)
 site_table.add_column('util','eff',4,tally='avg')
 
-job_table = condor.table.CondorTable()
+job_table = CondorTable()
 job_table.add_column('condor','condorid',13)
 job_table.add_column('gemc','gemc',6)
 job_table.add_column('site','MATCH_GLIDEIN_Site',15)
