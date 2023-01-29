@@ -2,6 +2,8 @@
 ### Utilities for selecting HTCondor jobs
 ###
 
+import condor.data
+
 class Matcher():
   def __init__(self, values):
     self.values = []
@@ -65,13 +67,13 @@ class CondorMatchers():
     elif not self.exit.matches(job):
       return False
     if self.args.plot is False:
-      if self.args.idle and job_states.get(job['JobStatus']) != 'I':
+      if self.args.idle and condor.data.job_states.get(job['JobStatus']) != 'I':
         return False
-      if self.args.completed and job_states.get(job['JobStatus']) != 'C':
+      if self.args.completed and condor.data.job_states.get(job['JobStatus']) != 'C':
         return False
-      if self.args.running and job_states.get(job['JobStatus']) != 'R':
+      if self.args.running and condor.data.job_states.get(job['JobStatus']) != 'R':
         return False
-      if self.args.held and job_states.get(job['JobStatus']) != 'H':
+      if self.args.held and condor.data.job_states.get(job['JobStatus']) != 'H':
         return False
     try:
       if int(job['CompletionDate']) > int(self.args.end.timestamp()):

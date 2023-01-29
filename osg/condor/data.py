@@ -5,6 +5,7 @@
 import os
 import re
 import sys
+import stat
 import json
 import datetime
 import subprocess
@@ -210,7 +211,7 @@ def site_summary(args):
     sites[site]['wallhr'] = condor.table.average(sites[site]['wallhr'])
     if args.hours <= 0:
       sites[site]['done'] = condor.table.null_field
-  return sort_dict(sites, 'total')
+  return condor.util.sort_dict(sites, 'total')
 
 def exit_code_summary(args):
   x = {}
@@ -300,7 +301,7 @@ def get_generator(job):
 def _make_timeline_entry(args):
   data = {}
   summary = job_counts.copy()
-  for cid,job in condor_cluster_summary(args).items():
+  for cid,job in condor.data.cluster_summary(args).items():
     for x in summary.keys():
       summary[x] += job[x]
   summary.pop('done')
@@ -317,7 +318,7 @@ def _make_timeline_entry(args):
   if len(attempts) > 0:
     summary['attempts'] = round(sum(attempts) / len(attempts),2)
   sites = {}
-  for site,val in condor_site_summary(args).items():
+  for site,val in condor.data.site_summary(args).items():
     if site is not None:
       sites[site] = val['run']
   data['global'] = summary
