@@ -3,11 +3,16 @@
 ###
 
 import os
+import re
 import sys
 import json
 import datetime
 import subprocess
 import collections
+
+import condor.matching
+import condor.util
+import condor.table
 
 json_format =  {'indent':2, 'separators':(',',': '), 'sort_keys':True}
 log_regex = '/([a-z]+)/job_([0-9]+)/log/job\.([0-9]+)\.([0-9]+)\.'
@@ -177,9 +182,9 @@ def cluster_summary(args):
     except:
       pass
   for v in ret.values():
-    v['eff'] = average(v['eff'])
-    v['ceff'] = average(v['ceff'])
-    v['att'] = average(v['att'])
+    v['eff'] = condor.table.average(v['eff'])
+    v['ceff'] = condor.table.average(v['ceff'])
+    v['att'] = condor.table.average(v['att'])
   return ret
 
 def site_summary(args):
@@ -201,10 +206,10 @@ def site_summary(args):
       except:
         pass
   for site in sites.keys():
-    sites[site]['ewallhr'] = stddev(sites[site]['wallhr'])
-    sites[site]['wallhr'] = average(sites[site]['wallhr'])
+    sites[site]['ewallhr'] = condor.table.stddev(sites[site]['wallhr'])
+    sites[site]['wallhr'] = condor.table.average(sites[site]['wallhr'])
     if args.hours <= 0:
-      sites[site]['done'] = Table.null_field
+      sites[site]['done'] = condor.table.null_field
   return sort_dict(sites, 'total')
 
 def exit_code_summary(args):
@@ -245,7 +250,7 @@ def efficiency_summary():
 
 def check_cvmfs(job):
   '''Return wether a CVMFS error is detected'''
-  for line in readlines_reverse(job.get('stdout'),20):
+  for line in condor.util.readlines_reverse(job.get('stdout'),20):
     for x in cvmfs_error_strings:
       if line.find(x) >= 0:
         return False
@@ -259,7 +264,7 @@ def check_xrootd(job):
 
 def get_exit_code(job):
   '''Extract the exit code from the log file'''
-  for line in readlines_reverse(job.get('stderr'),3):
+  for line in condor.util.readlines_reverse(job.get('stderr'),3):
     cols = line.strip().split()
     if len(cols) == 2 and cols[0] == 'exit':
       try:
@@ -272,10 +277,10 @@ def get_exit_code(job):
 generators = {}
 def get_generator(job):
   if job.get('ClusterId') not in generators:
-    generators['ClusterId'] = Table.null_field
+    generators['ClusterId'] = condor.table.null_field
     if job.get('UserLog') is not None:
       job_script = os.path.dirname(os.path.dirname(job.get('UserLog')))+'/nodeScript.sh'
-      for line in readlines(job_script):
+      for line in condor.util.readlines(job_script):
         line = line.lower()
         m = re.search('events with generator (.*) with options', line)
         if m is not None:

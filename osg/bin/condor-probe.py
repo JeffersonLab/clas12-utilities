@@ -5,6 +5,8 @@ import sys
 import socket
 import datetime
 
+sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/..')
+
 import condor.data
 import condor.plot
 import condor.table
@@ -109,9 +111,9 @@ if args.tail is None and not args.cvmfs:
   if len(condor.table.job_table.rows) > 0:
     if args.summary or args.sitesummary:
       if args.summary:
-        print(condor.table.summary_table.add_jobs(condor_cluster_summary(args)))
+        print(condor.table.summary_table.add_jobs(condor.data.cluster_summary(args)))
       else:
-        print(condor.table.site_table.add_jobs(condor_site_summary(args)))
+        print(condor.table.site_table.add_jobs(condor.data.site_summary(args)))
     else:
       print(condor.table.job_table)
     if (args.held or args.idle) and args.parseexit:

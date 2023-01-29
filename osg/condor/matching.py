@@ -46,7 +46,7 @@ class CondorMatchers():
     self.condor = CondorMatcher(args.condor, 'condor')
     self.generator = CondorMatcher(args.generator, 'generator')
   def matches(self, job):
-    if args.noexit and job.get('ExitCode') is not None:
+    if self.args.noexit and job.get('ExitCode') is not None:
       return False
     if job.get('condor') is None:
       return False
