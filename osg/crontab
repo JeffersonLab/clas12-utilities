@@ -1,7 +1,7 @@
 SHELL=/bin/bash
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 MAILTO=foo@bar
-d=/group/clas12/packages/clas12-utilities/dev/osg
+d=/group/clas12/packages/clas12-utilities/dev/osg/bin
 #
 # .---------------- minute (0 - 59)
 # |  .------------- hour (0 - 23)
@@ -15,23 +15,20 @@ d=/group/clas12/packages/clas12-utilities/dev/osg
 */5  *  *  *  * flock -n $HOME/.osgpriority.lock $HOME/priorityCron.sh >& $HOME/priorityCron.log  >/dev/null 2>&1
 #
 # This transfers data from the submit node to Lustre and does cleanup:
-10   *  *  *  * flock -n ~/.osgpool.lock $d/bin/transfer.sh || echo "ERROR:  Previous transfer cronjob still running"
+10   *  *  *  * flock -n ~/.osgpool.lock $d/transfer.sh || echo "ERROR:  Previous transfer cronjob still running"
 #
 # This emails the daily digest of above errors and vacates, and attaches a plot summary: 
-0    7  *  *  * $d/bin/daily-digest.sh
-#
-# This does all the ones below
-33   *  *  *  * $d/bin/condor-cron.sh
+0    7  *  *  * $d/daily-digest.sh
 #
 # These check for CVMFS errors on remote nodes:
-#20 1-23/2  *  *  * flock -n $HOME/.condor.lock $d/bin/check-cvmfs.sh || echo "ERROR:  Previous condor cronjob still running"
+#20 1-23/2  *  *  * flock -n $HOME/.condor.lock $d/check-cvmfs.sh || echo "ERROR:  Previous condor cronjob still running"
 #
 # These check for XRootD errors on remote nodes:
-#30 1-23/2  *  *  * flock -n $HOME/.condor.lock $d/bin/check-xrootd.sh || echo "ERROR:  Previous condor cronjob still running"
+#30 1-23/2  *  *  * flock -n $HOME/.condor.lock $d/check-xrootd.sh || echo "ERROR:  Previous condor cronjob still running"
 #
 # These check for stalled jobs and vacates them:
-#20 0-22/2  *  *  * flock -n $HOME/.condor.lock $d/bin/vacate-stalls.sh || echo "ERROR:  Previous condor cronjob still running"
+#20 0-22/2  *  *  * flock -n $HOME/.condor.lock $d/vacate-stalls.sh || echo "ERROR:  Previous condor cronjob still running"
 #
 # This updates the timeline archive:
-#10,40  *   *  *  * flock -n $HOME/.condor.lock $d/bin/condor-probe.py -timeline
+#10,40  *   *  *  * flock -n $HOME/.condor.lock $d/condor-probe.py -timeline
 #
