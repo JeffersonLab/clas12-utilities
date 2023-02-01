@@ -83,7 +83,7 @@ def plot(args, logscale=0):
   # read condor data, fill histos:
   for condor_id,job in condor.data.get_jobs(args):
     gen = job.get('generator')
-    if job_states[job['JobStatus']] != 'C':
+    if condor.data.job_states[job['JobStatus']] != 'C':
       try:
         n = int(job.get('NumJobStarts'))
         h1attq.Fill(n)
