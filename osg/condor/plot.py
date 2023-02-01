@@ -3,6 +3,7 @@
 ###
 
 import sys
+import collections
 
 import condor.data
 
