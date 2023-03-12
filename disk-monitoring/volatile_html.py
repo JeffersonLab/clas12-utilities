@@ -96,7 +96,7 @@ for i in range(len(result)):
 # get top-level usage (this is the slowest part, so we limit to specific subdirs):
 # (if we could use the database to do this efficiently, that would be nice):
 top_sums = {}
-for x in 'a','b','f','k','m':
+for x in 'a','b','c','f','k','m':
   try:
     y = subprocess.check_output(['du','-s',path_prefix+'/rg-'+x])
     y = float(y.split().pop(0))/1024/1024/1024

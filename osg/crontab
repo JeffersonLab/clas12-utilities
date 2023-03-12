@@ -1,7 +1,7 @@
 SHELL=/bin/bash
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 MAILTO=foo@bar
-d=/group/clas12/packages/clas12-utilities/dev/disk-osg
+d=/group/clas12/packages/clas12-utilities/dev/osg/bin
 #
 # .---------------- minute (0 - 59)
 # |  .------------- hour (0 - 23)
@@ -19,9 +19,6 @@ d=/group/clas12/packages/clas12-utilities/dev/disk-osg
 #
 # This emails the daily digest of above errors and vacates, and attaches a plot summary: 
 0    7  *  *  * $d/daily-digest.sh
-#
-# This does all the ones below
-33   *  *  *  * $d/condor-cron.sh
 #
 # These check for CVMFS errors on remote nodes:
 #20 1-23/2  *  *  * flock -n $HOME/.condor.lock $d/check-cvmfs.sh || echo "ERROR:  Previous condor cronjob still running"

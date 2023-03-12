@@ -28,8 +28,13 @@ use DBI;
 $host = 'clasdb.jlab.org';
 $user = 'diskmanager';
 $database = 'diskManagement';
+#$dbfile = '/home/baltzell/disk/sqlite/disk.sql';
+
 print "Connecting to $user\@$host, using $database.\n";
+
 $dbh_db = DBI->connect("DBI:mysql:$database:$host", $user, $password);
+#$dbh_db = DBI->connect("DBI:SQLite:dbname=$dbfile", "", "");
+
 if (defined $dbh_db) {
     print "Connection successful\n";
 } else {

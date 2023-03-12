@@ -5,6 +5,7 @@ from CcdbUtil import RunRange
 _BEAM_ENERGY_TOLERANCE=10  # MeV
 _BEAM_STOP_THRESHOLD=10
 _RUN_NUMBER_MAX=2E5
+_RUN_NUMBER_MIN=3E3
 
 #
 # Beam blocker attenuation factor is dependent on beam energy.
@@ -15,6 +16,7 @@ _RUN_NUMBER_MAX=2E5
 
 _ATTEN={}
 _ATTEN[10604]= 9.8088
+_ATTEN[10547]= 9.1508  # RG-C
 _ATTEN[10409]= 9.6930
 _ATTEN[10405]= 9.6930  # unmeasured during BONuS, copied from 10409
 _ATTEN[10375]= 9.6930  # bogus beam energy from ACC during BONuS
@@ -25,6 +27,7 @@ _ATTEN[10200]= 9.96025
 _ATTEN[ 7546]=14.89565
 _ATTEN[ 6535]=16.283
 _ATTEN[ 6423]=16.9726
+_ATTEN[ 2212]= 1.0
 
 _OVERRIDE_ENERGY={
     RunRange(12444,12853,None):10405
@@ -41,10 +44,14 @@ class MyaFcup:
       self.run = int(myaDatum.getValue('B_DAQ:run_number'))
       if self.run > _RUN_NUMBER_MAX:
         self.run=None
+      elif self.run < _RUN_NUMBER_MIN:
+        self.run=None
     except ValueError:
       self.run = None
     try:
       self.energy = float(myaDatum.getValue('MBSY2C_energy'))
+      if self.energy < 1:
+        self.energy = None
     except ValueError:
       self.energy = None
     try:

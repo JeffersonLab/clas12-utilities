@@ -6,7 +6,8 @@ import datetime
 import ccdb
 import sqlalchemy
 
-info='''Sometimes you want to know what CCDB assignments you will get for
+info='''
+Sometimes you want to know what CCDB assignments you will get for
 a given run range.  But often that isn't simple to figure out from
 standard CCDB tools, as it depends on the timestamp, variation and
 its mothers, and the time at which different assignments were made.
@@ -56,7 +57,7 @@ class Range():
             print('ERROR:  File already exists:  '+self.filename)
             print('ABORTED.')
             sys.exit(1)
-        print('Writing file:  '+self.filename)
+        print('# Writing file:  '+self.filename)
         with open(self.filename,'w') as f:
             if comment is not None:
                 f.write('#'+comment+'\n')
@@ -70,10 +71,10 @@ class Range():
 cli = argparse.ArgumentParser(description='Generate effective run ranges for a given CCDB table.',
     epilog='For example:  ccdb-ranges.py -min 4090 -max 5010 -table /runcontrol/fcup')
 
-cli.add_argument('-info', help='print some information about this script', default=False, action='store_true')
-cli.add_argument('-min', metavar='#', help='minimum run number', type=int, required=True)
-cli.add_argument('-max', metavar='#', help='maximum run number', type=int, required=True)
-cli.add_argument('-table', help='table name', type=str, required=True)
+cli.add_argument('-info', help='print some information about this tool', default=False, action='store_true')
+cli.add_argument('-min', metavar='#', help='minimum run number', type=int, required='-info' not in sys.argv)
+cli.add_argument('-max', metavar='#', help='maximum run number', type=int, required='-info' not in sys.argv)
+cli.add_argument('-table', help='table name', type=str, required='-info' not in sys.argv)
 cli.add_argument('-variation', help='variation name (default=default)', type=str, default='default')
 cli.add_argument('-timestamp', metavar='MM/DD/YYYY[-HH:mm:ss]', help='timestamp (default=now)', type=str, default=None)
 cli.add_argument('-dump', help='print all constant sets', default=False, action='store_true')
@@ -84,7 +85,7 @@ args = cli.parse_args(sys.argv[1:])
 
 if args.info:
     print('\n'+''.ljust(66,"#"))
-    print(cli.description+'\n\n'+info)
+    print(cli.description+'\n'+info)
     print(''.ljust(66,"#")+'\n')
     sys.exit(0)
 
@@ -121,9 +122,9 @@ for run in range(args.min, args.max+1):
     else:
         raise Exception('This should be impossible.')
 
-print('\nEffective Run Ranges ::::::::::::::::::::::::::::::')
-print(Range.header()+'\n'+'\n'.join([str(r) for r in ranges]))
-print(':::::::::::::::::::::::::::::::::::::::::::::::::::\n')
+print('\n# Effective Run Ranges ::::::::::::::::::::::::::::::')
+print('#'+Range.header()+'\n#'+'\n#'.join([str(r) for r in ranges]))
+print('#:::::::::::::::::::::::::::::::::::::::::::::::::::\n')
 
 if args.dump:
     for x in ranges:

@@ -39,7 +39,7 @@ echo >> perms.txt
 cat perms2.txt >> perms.txt
 rm -f perms2.txt
 
-scp *.txt *.html hps@ifarm1901:/group/hps/www/hpsweb/html/disk/work/
+scp perms.txt du.txt hps.html hps@ifarm1901:/group/hps/www/hpsweb/html/disk/work/
 
 echo "FINISHED." >> log
 date >> log

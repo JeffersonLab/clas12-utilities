@@ -4,6 +4,7 @@ import os, sys
 from subprocess import Popen, PIPE
 import argparse
 
+
 parser = argparse.ArgumentParser(description='Clone the CLAS12 CCDB MySQL Database into a local SQLite file.')
 parser.add_argument('outfile',
     type=str, help='output file',
@@ -26,7 +27,7 @@ if os.path.exists(args.outfile):
 # Thanks to and @artemyk and @gkuenning for their nice tweaks.
 
 cmd = r'''\
-mysqldump  --compatible=ansi --skip-extended-insert --compact  \
+mysqldump --skip-tz-utc --compatible=ansi --skip-extended-insert --compact  \
 -uclas12writer -p'XXXXXXXXX' -hclasdb.jlab.org clas12 | \
 awk '
 
