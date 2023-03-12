@@ -3,7 +3,7 @@ import re,os,time,glob,subprocess,datetime
 
 dry_run = False
 minimum_runno = 17755
-input_dir = '/work/hydra'
+input_dir = '/work/hydra/images'
 output_dir = '/local/hydra/input'
 blacklist_file = '/work/hydra/blacklist.txt'
 indir_regex = '^clas12mon_(\d+)_(\d+-\d+-\d+_\d+\.\d+\.\d+_[APM]+)$'
