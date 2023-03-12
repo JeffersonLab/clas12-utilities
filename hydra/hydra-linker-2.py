@@ -72,7 +72,7 @@ def link(data):
       if runno in blacklist:
         if timestamp in blacklist.get(runno):
           continue
-      stub = '%.6d %s'%(runno,datetime.datetime.strftime(timestamp, time_format))
+      stub = '%d %s'%(runno,datetime.datetime.strftime(timestamp, time_format))
       additions.append(stub)
       if dry_run:
         print(stub)
