@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import re,os,time,glob,subprocess,datetime
 
-dry_run = False
-minimum_runno = 17755
+dryrun = False
+minimum_runno = 17762
+minimum_age_seconds = 120
 input_dir = '/work/hydra/images'
 output_dir = '/local/hydra/input'
 blacklist_file = '/work/hydra/blacklist.txt'
@@ -48,7 +49,7 @@ def find(blacklist):
       m = re.match(indir_regex, dirname)
       if m is None:
         continue
-      if time.time() - os.path.getmtime(fulldirname) < 120:
+      if time.time() - os.path.getmtime(fulldirname) < minimum_age_seconds:
         continue
       runno = int(m.group(1))
       timestamp = m.group(2)
@@ -74,14 +75,14 @@ def link(data):
           continue
       stub = '%d %s'%(runno,datetime.datetime.strftime(timestamp, time_format))
       additions.append(stub)
-      if dry_run:
-        print(stub)
-        continue
       idir = data[runno][timestamp]['dirpath']
       chunk = data[runno][timestamp]['chunk']
       odir = output_dir + '/' + str(runno)
-      os.makedirs(odir, exist_ok=True)
-      os.chmod(odir, 0o777)
+      if dryrun:
+        print(stub)
+      else:
+        os.makedirs(odir, exist_ok=True)
+        os.chmod(odir, 0o777)
       for png in glob.glob(idir+'/*.png'):
         png = os.path.basename(png)
         if re.match('.*\d+-\d+-\d+_\d+\.\d+\.\d+.*', png) is not None:
@@ -89,7 +90,9 @@ def link(data):
         new_png = png[:-4] + '_%.4d.png'%chunk
         src = idir + '/' + png
         dst = odir + '/' + new_png
-        if not os.path.exists(dst):
+        if dryrun:
+          print(src+'  ->  '+dst)
+        elif not os.path.exists(dst):
           os.symlink(src, dst)
   return additions
 
