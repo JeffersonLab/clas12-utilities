@@ -24,7 +24,7 @@ sort -r -n du.txt | awk '{printf"%12s %s\n",$1,$2}' > du2.txt
 mv -f du2.txt du.txt
 mv -f perms2.txt perms.txt
 
-scp *.txt *.html jlabl5:~/public_html/clas/disk/work
+scp -q *.txt *.html jlabl5:~/public_html/clas/disk/work
 
 echo "FINISHED." >> log
 date >> log
