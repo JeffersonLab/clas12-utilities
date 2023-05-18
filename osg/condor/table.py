@@ -2,6 +2,7 @@
 ### Tools for generating HTCondor status tables
 ### 
 
+import math
 import datetime
 import condor.util
 
