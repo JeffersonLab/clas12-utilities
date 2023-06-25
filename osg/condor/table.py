@@ -185,9 +185,9 @@ def tail_log(job, nlines):
     if x is not None and os.path.isfile(x):
       print(''.ljust(80,'>'))
       print(x)
-      if args.tail > 0:
-        print('\n'.join(reversed(list(condor.util.readlines_reverse(x, args.tail)))))
-      elif args.tail < 0:
+      if nlines > 0:
+        print('\n'.join(reversed(list(condor.util.readlines_reverse(x, nlines)))))
+      elif nlines < 0:
         for x in condor.util.readlines(x):
           print(x)
 
