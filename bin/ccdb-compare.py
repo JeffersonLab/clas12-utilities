@@ -62,6 +62,6 @@ a2 = get(args.table,args.r2,args.v2,args.t2)
 a1 = [ ' '.join(x) for x in a1.constant_set.data_table ]
 a2 = [ ' '.join(x) for x in a2.constant_set.data_table ]
 
-for x in difflib.context_diff(a1,a2):
+for x in difflib.unified_diff(a1,a2):
   print(x)
 
