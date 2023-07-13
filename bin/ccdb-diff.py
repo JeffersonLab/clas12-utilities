@@ -15,8 +15,8 @@ cli.add_argument('-r1', metavar='#', help='first run number', type=int, required
 cli.add_argument('-r2', metavar='#', help='second run number (default=same as r1)', type=int, default=None)
 cli.add_argument('-v1', metavar='VARIATION', help='first variation (default=default)', type=str, default='default')
 cli.add_argument('-v2', metavar='VARIATION', help='second variation (default=same as v1)', type=str, default=None)
-cli.add_argument('-t1', metavar='MM/DD/YYYY[-HH:mm:ss]', help='timestamp (default=now)', type=str, default=None)
-cli.add_argument('-t2', metavar='MM/DD/YYYY[-HH:mm:ss]', help='timestamp (default=same as t1)', type=str, default=None)
+cli.add_argument('-t1', metavar='MM/DD/YYYY[-HH:mm:ss]', help='first timestamp (default=now)', type=str, default=None)
+cli.add_argument('-t2', metavar='MM/DD/YYYY[-HH:mm:ss]', help='second timestamp (default=same as t1)', type=str, default=None)
 
 args = cli.parse_args(sys.argv[1:])
 
