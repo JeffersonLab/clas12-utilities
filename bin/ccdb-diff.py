@@ -8,7 +8,7 @@ import ccdb
 import sqlalchemy
 
 cli = argparse.ArgumentParser(description='Compare two CCDB tables, printing the result in the standard \"diff\" format.',
-    epilog='Example:  ccdb-diff.py -table /runcontrol/fcup -r1 5000 -r2 5000')
+    epilog='Example:  ccdb-diff.py -table /calibration/svt/status -r1 5000 -r2 6000')
 
 cli.add_argument('-table', help='table name', type=str, required=True)
 cli.add_argument('-r1', metavar='#', help='first run number', type=int, required=True)
