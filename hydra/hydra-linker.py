@@ -101,6 +101,7 @@ while True:
   additions = link(find(blacklist))
   update_blacklist(blacklist_file, additions)
   if len(additions) > 0:
-    print('Added %d runchunks.'%len(additions))
+    t = datetime.datetime.strftime(datetime.datetime.now(), '%m/%d/%y %H:%M:%S')
+    print('%s: Added %d runchunks.'%(t,len(additions)))
   time.sleep(60)
 
