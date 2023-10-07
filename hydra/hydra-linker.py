@@ -2,8 +2,8 @@
 import re,os,time,glob,subprocess,datetime
 
 dryrun = False
-minimum_runno = 17762
-minimum_age_seconds = 120
+minimum_runno = 18338
+minimum_age_seconds = 60
 input_dir = '/local/baltzell/hydra/images'
 output_dir = '/local/hydra/input'
 blacklist_file = '/local/baltzell/hydra/blacklist.txt'
@@ -103,5 +103,5 @@ while True:
   if len(additions) > 0:
     t = datetime.datetime.strftime(datetime.datetime.now(), '%m/%d/%y %H:%M:%S')
     print('%s: Added %d runchunks.'%(t,len(additions)))
-  time.sleep(60)
+  time.sleep(20)
 
