@@ -9,11 +9,11 @@ run_number=-1
 # reconnecting to the ET ring when it's restarted, is cumbersome
 # and we do this kludge instead for now.
 
-# If run number is new, and daq status is running, and
-# beam current non-zero, then return the new run number:
+# If run number is good and new, and daq status is running,
+# and beam current non-zero, then return the new run number:
 function check() {
    run=$(caget -t -w 1 B_DAQ:run_number)
-   sta=$(caget -t -w 1 B_DAQ:coda_status)
+   sta=$(caget -t -w 1 B_DAQ:coda_status | awk '{print$1}')
    cur=$(caget -t -w 1 IPM2C21A)
    cur=${cur%%.*}
    [ $run -lt 100000 ] || return
