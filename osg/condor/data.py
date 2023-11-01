@@ -146,16 +146,8 @@ def calc_wallhr(job):
   return ret
 
 def get_status_key(job):
-  if job_states[job['JobStatus']] == 'H':
-    return 'held'
-  elif job_states[job['JobStatus']] == 'I':
-    return 'idle'
-  elif job_states[job['JobStatus']] == 'R':
-    return 'run'
-  elif job_states[job['JobStatus']] == 'C':
-    return 'done'
-  else:
-    return 'other'
+  d = {'H':'held','I':'idle','R':'run','C':'done'}
+  return d.get(job_states[job['JobStatus']],'other')
 
 def cluster_summary(args):
   '''Tally jobs by condor's ClusterId'''
