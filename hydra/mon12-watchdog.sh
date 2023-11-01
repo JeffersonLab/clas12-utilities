@@ -12,14 +12,14 @@ run_number=-1
 # If run number is good and new, and daq status is running,
 # and beam current non-zero, then return the new run number:
 function check() {
-   run=$(caget -t -w 1 B_DAQ:run_number)
-   sta=$(caget -t -w 1 B_DAQ:coda_status | awk '{print$1}')
    cur=$(caget -t -w 1 IPM2C21A)
    cur=${cur%%.*}
+   [ $cur -gt 1 ] || return
+   sta=$(caget -t -w 1 B_DAQ:coda_status)
+   [ "$sta" == "running" ] || return
+   run=$(caget -t -w 1 B_DAQ:run_number)
    [ $run -lt 100000 ] || return
    [ $run -gt 0 ] || return
-   [ $cur -gt 1 ] || return
-   [ $sta == "running" ] || return
    [ $run != $run_number ] || return
    echo $run
 }
