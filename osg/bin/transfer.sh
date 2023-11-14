@@ -48,14 +48,14 @@ srcdir=/osgpool/hallb/clas12/gemc
 
 # remote destination for contents of $srcdir:
 remotehost=dtn1902
-remotepath=/lustre19/expphy/volatile/clas12/osg2
+remotepath=/lustre19/expphy/volatile/clas12/osg
 dest=$user@$remotehost:$remotepath
 
 # timeout transfer if it takes longer than this many seconds: 
 rsync_timeout=5400
 
 # data files older than this will be rsync'd to $dest:
-rsync_minutes=60
+rsync_minutes=30
 
 # files older than this will be deleted from $srcdir:
 delete_days=7
@@ -190,7 +190,7 @@ pushd $srcdir > /dev/null
 # transfer *.hipo data files older than some minutes:
 
 dateit FIND HIPO
-find . -mindepth 5 -maxdepth 5 -type f -cmin +$rsync_minutes -name '*.hipo' > $tmpfile 2>&1 | $tee
+find . -mindepth 4 -maxdepth 4 -type f -cmin +$rsync_minutes -name '*.hipo' > $tmpfile 2>&1 | $tee
 [ $? -ne 0 ] && echo "$errmsg find *.hipo failed, aborting." | $tee && exit 5
 
 if [ -s $tmpfile ]; then
@@ -209,6 +209,7 @@ if [ -s $tmpfile ]; then
 
   # transfer the top-level nodeScript.sh from each submission:
   # (one day we can remove this, after job specifications are in HIPO)
+  # (looks like this is relying on clobbering?)
 
   dateit FIND SCRIPT
   find . -mindepth 3 -maxdepth 3 -type f -cmin +$rsync_minutes -name 'nodeScript.sh' > $tmpfile 2>&1 | $tee
