@@ -7,7 +7,7 @@ image_startswith = None   # limit to filenames starting with this
 ignore_blacklist = False  # ignore the blacklist file and don't update it
 
 maximum_runno = 100000    # ignore run numbers larger than this
-minimum_runno = 18338     # ignore run numbers smaller than this
+minimum_runno = 18652     # ignore run numbers smaller than this
 minimum_age_seconds = 60  # minimum age for considering images
 
 input_dir = '/local/baltzell/hydra/images'
@@ -102,7 +102,7 @@ def link(data):
           print(src+'  ->  '+dst)
         elif not os.path.exists(dst):
           os.symlink(src, dst)
-          print(src+'  ->  '+dst)
+          #print(src+'  ->  '+dst)
   return additions
 
 print('Starting hydra-linker ...')
