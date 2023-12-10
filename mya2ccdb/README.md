@@ -1,3 +1,13 @@
+# new
+
+fcup-calib.py
+
+Python module ependencies:
+* requests
+* pandas
+* rcdb
+
+# old
 
 Extract Faraday cup offset and half-wave plate position from Mya archive and create .txt files for CCDB.
 
