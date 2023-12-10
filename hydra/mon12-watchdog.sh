@@ -13,11 +13,14 @@ run_number=-1
 # and beam current non-zero, then return the new run number:
 function check() {
    cur=$(caget -t -w 1 IPM2C21A)
+   [ $? -eq 0 ] || return
    cur=${cur%%.*}
    [ $cur -gt 1 ] || return
    sta=$(caget -t -w 1 B_DAQ:coda_status)
+   [ $? -eq 0 ] || return
    [ "$sta" == "running" ] || return
    run=$(caget -t -w 1 B_DAQ:run_number)
+   [ $? -eq 0 ] || return
    [ $run -lt 100000 ] || return
    [ $run -gt 0 ] || return
    [ $run != $run_number ] || return
