@@ -49,6 +49,28 @@ attenuations = {
      2212 : 1.0,
 }
 
+example_url_offset = 'https://epicsweb.jlab.org/wave/?start=2023-12-09T20%3A41%3A10.315&end=2023-12-09T20%3A46%3A10.315&myaDeployment=&myaLimit=100000&windowMinutes=30&title=&fullscreen=false&layoutMode=1&viewerMode=1&pv=IPM2C21A&pv=scalerS2b&IPM2C21Alabel=Beam+Current+-+2C21A+BPM+%28nA%29&IPM2C21Acolor=%230000ff&IPM2C21AyAxisLabel=&IPM2C21AyAxisMin=&IPM2C21AyAxisMax=&IPM2C21AyAxisLog&IPM2C21Ascaler=&scalerS2blabel=Raw+Faraday+Cup+%28Hz%29&scalerS2bcolor=%23ff0000&scalerS2byAxisLabel=&scalerS2byAxisMin=&scalerS2byAxisMax=&scalerS2byAxisLog&scalerS2bscaler='
+
+example_url_stop = 'https://epicsweb.jlab.org/wave/?start=2023-12-09T21%3A46%3A29.975&end=2023-12-09T21%3A51%3A29.975&myaDeployment=&myaLimit=100000&windowMinutes=30&title=&fullscreen=false&layoutMode=1&viewerMode=1&pv=beam_stop&pv=MBSY2C_energy&MBSY2C_energylabel=Beam+Energy+%28MeV%29&MBSY2C_energycolor=%230000ff&MBSY2C_energyyAxisLabel=&MBSY2C_energyyAxisMin=&MBSY2C_energyyAxisMax=&MBSY2C_energyyAxisLog&MBSY2C_energyscaler=&beam_stoplabel=Beam+Stopper+Position&beam_stopcolor=%23ff0000&beam_stopyAxisLabel=&beam_stopyAxisMin=&beam_stopyAxisMax=&beam_stopyAxisLog&beam_stopscaler='
+
+info = '''
+Run start and end times are determined from RCDB, corresponding EPICS data is retrieved from the Mya archive, and Faraday cup calibrations are prepared for uploading to CCDB\'s /runcontrol/fcup table.
+
+* Faraday cup offset is calculated as an average of raw scaler readings with a veto on BPMs above %.1f nA and a -%d/+%d second time window.
+
+* Beam stopper attenuation is based on beam energy and an internal lookup table that may require updating for new experimental conditions.
+
+* Issues detected, e.g., invalid parameters from RCDB, multiple or unkonwn beam energies, or multiple beam stopper positions in a single run, are reported and no tables are generated for affected runs.
+
+* After a year or two, EPICS data are moved to the Mya "history" deployment and may require using the -m option.
+
+* A Mya archive URL for investigating Faraday cup offset:  \n%s
+
+* A Mya archive URL for investigating beam stopper attenuation:  \n%s
+'''
+
+info = info % (bpm_veto_nA,bpm_veto_seconds[0],bpm_veto_seconds[1],example_url_offset,example_url_stop)
+
 class Tee(object):
     def __init__(self, name, mode):
         self.name = name
@@ -218,43 +240,52 @@ def process(args, runmin, runmax):
 
 if __name__ == '__main__':
 
-    cli = argparse.ArgumentParser(description='Determine Faraday cup offset and attenuation factors for CCDB.',epilog='Run start and end times are retrieved from RCDB, and then beam currents, raw Faraday cup, and beam energy and stopper motor values are retrieved from the Mya EPICS archive.  Beam stopper attenuation calibrations are stored internally at the top of this script and may require updates for new experimental conditions.  After a couple years, data are moved to the Mya "history" deployment and may require the -m option.')
-    cli.add_argument('runs', help='run range or list, e.g., 100-200 or 1,4,7')
+    cli = argparse.ArgumentParser(description='Calibrate Faraday cup offset and attenuation for CCDB.')
+    cli.add_argument('runs', help='run range or list, e.g., 100-200 or 1,4,7 or 1 4 7', nargs='*')
     cli.add_argument('-s', help='single calculation over all runs', default=False, action='store_true')
     cli.add_argument('-d', help='dry run, no output files', default=False, action='store_true')
     cli.add_argument('-v', help='verbose mode', default=False, action='store_true')
     cli.add_argument('-q', help='quiet mode', default=False, action='store_true')
     cli.add_argument('-m', help='Mya deployment (default=ops)', default='ops', choices=['ops','history'])
+    cli.add_argument('-i', help='print detailed information', default=False, action='store_true')
     args = cli.parse_args(sys.argv[1:])
+
+    sep = '\n'+':'*30
+
+    if args.i:
+        cli.print_usage()
+        print('\n'+cli.description)
+        print(sep)
+        print(info)
+        sys.exit(0)
+
+    if len(args.runs) == 0:
+        cli.error('runs argument is required')
 
     if not args.d:
         tee = Tee('./fcup-calib_%s.log'%timestamp.replace(' ','_').replace('/','-'),'w')
 
     try:
-        if args.runs.find('-') > 0:
-            args.min,args.max = [int(x) for x in args.runs.split('-')]
+        if len(args.runs)>1:
+            args.runs = sorted([ int(x) for x in args.runs ])
+        elif args.runs[0].find('-') > 0:
+            args.min,args.max = [int(x) for x in args.runs[0].split('-')]
             if args.max < args.min:
                 cli.error('max is less than min')
         else:
-            args.runs = sorted([ int(x) for x in args.runs.split(',') ])
+            args.runs = sorted([ int(x) for x in args.runs[0].split(',') ])
             args.min = args.runs[0]
             args.max = args.runs[len(args.runs)-1]
-    except ValueError:
-        cli.error('Invalid "runs" argument:  '+args.runs)
+    except (ValueError,TypeError):
+        cli.error('Invalid "runs" argument:  '+str(args.runs))
 
-    if args.q:
-        args.v = False
-
+    runs = []
     args.db = RCDB()
     atexit.register(args.db.cleanup)
 
-    runs = []
-    sep = '\n'+':'*30
-
     if args.s:
         runs.append(('%s-%s'%(args.min,args.max), process(args, args.min, args.max)))
-
-    elif isinstance(args.runs, list):
+    elif len(args.runs) > 1:
         for run in args.runs:
             runs.append((str(run), process(args, run, run)))
             run = args.db.db.get_next_run(run).number
@@ -283,7 +314,7 @@ if __name__ == '__main__':
     if not args.d:
         print('\nLogs saved to '+tee.name)
         if ngood > 0:
-            print('Writing CCDB tables to %s\n'%out_dir)
+            print('CCDB tables written to %s\n'%out_dir)
             os.makedirs(out_dir)
             with open('%s/upload'%out_dir,'w') as f:
                 for run in filter(lambda x : x[1], runs):
