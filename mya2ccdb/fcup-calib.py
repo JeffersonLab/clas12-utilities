@@ -16,6 +16,8 @@ import requests
 import sqlalchemy
 import rcdb
 
+#requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+
 version = 'v1.0'
 timestamp = datetime.datetime.now().strftime('%y/%m/%d %H:%M:%S')
 out_dir = './fcup-calib_%s'%timestamp.replace(' ','_').replace('/','-')
@@ -23,7 +25,7 @@ pv_names = {'scalerS2b':'fcup','beam_stop':'stop','IPM2C21A':'bpm','MBSY2C_energ
 
 # beam current veto parameters:
 bpm_veto_nA = 0.1
-bpm_veto_seconds = [5.0,10.0]
+bpm_veto_seconds = [10.0,5.0]
 
 # tolerance for choosing stopper attenuation:
 energy_tolerance_MeV = 10.0
@@ -32,6 +34,7 @@ energy_tolerance_MeV = 10.0
 stopper_threshold = 10.0
 
 # beam stopper calibrations:
+# FIXME: index by run number instead of energy
 attenuations = {
     10604 : 9.8088,
     10532 : None,    # RG-D
@@ -49,26 +52,7 @@ attenuations = {
      2212 : 1.0,
 }
 
-example_url_offset = 'https://epicsweb.jlab.org/wave/?start=2023-12-09T20%3A41%3A10.315&end=2023-12-09T20%3A46%3A10.315&myaDeployment=&myaLimit=100000&windowMinutes=30&title=&fullscreen=false&layoutMode=1&viewerMode=1&pv=IPM2C21A&pv=scalerS2b&IPM2C21Alabel=Beam+Current+-+2C21A+BPM+%28nA%29&IPM2C21Acolor=%230000ff&IPM2C21AyAxisLabel=&IPM2C21AyAxisMin=&IPM2C21AyAxisMax=&IPM2C21AyAxisLog&IPM2C21Ascaler=&scalerS2blabel=Raw+Faraday+Cup+%28Hz%29&scalerS2bcolor=%23ff0000&scalerS2byAxisLabel=&scalerS2byAxisMin=&scalerS2byAxisMax=&scalerS2byAxisLog&scalerS2bscaler='
-example_url_stop = 'https://epicsweb.jlab.org/wave/?start=2023-12-09T21%3A46%3A29.975&end=2023-12-09T21%3A51%3A29.975&myaDeployment=&myaLimit=100000&windowMinutes=30&title=&fullscreen=false&layoutMode=1&viewerMode=1&pv=beam_stop&pv=MBSY2C_energy&MBSY2C_energylabel=Beam+Energy+%28MeV%29&MBSY2C_energycolor=%230000ff&MBSY2C_energyyAxisLabel=&MBSY2C_energyyAxisMin=&MBSY2C_energyyAxisMax=&MBSY2C_energyyAxisLog&MBSY2C_energyscaler=&beam_stoplabel=Beam+Stopper+Position&beam_stopcolor=%23ff0000&beam_stopyAxisLabel=&beam_stopyAxisMin=&beam_stopyAxisMax=&beam_stopyAxisLog&beam_stopscaler='
-info = '''
-Run start and end times are determined from RCDB, corresponding EPICS data is retrieved from the Mya archive, and Faraday cup calibrations are prepared for uploading to CCDB\'s /runcontrol/fcup table.
-
-* Faraday cup offset is calculated as an average of raw scaler readings with a veto on BPMs above %.1f nA and a -%d/+%d second time window.
-
-* Beam stopper attenuation is based on beam energy and an internal lookup table that may require updating for new experimental conditions.
-
-* Detected issues, e.g., invalid parameters from RCDB, multiple or unkonwn beam energies, or multiple beam stopper positions in a single run, are reported and no tables are generated for affected runs.
-
-* After a year or two, EPICS data are moved to the Mya "history" deployment and may require using the -m option.
-
-* A Mya archive URL for investigating Faraday cup offset:  \n%s
-
-* A Mya archive URL for investigating beam stopper attenuation:  \n%s
-'''
-
-info = info % (bpm_veto_nA,bpm_veto_seconds[0],bpm_veto_seconds[1],example_url_offset,example_url_stop)
-
+# hack to tee stdout to a log file:
 class Tee(object):
     def __init__(self, name, mode):
         self.name = name
@@ -83,6 +67,7 @@ class Tee(object):
     def flush(self):
         self.file.flush()
 
+# Convenience/exception wrapper for RCDB:
 class RCDB:
     def __init__(self):
         self.db = None
@@ -117,7 +102,9 @@ class RCDB:
         except AttributeError:
             pass
 
+# Convenience class for CCDB table:
 class FcupTable:
+    table_name = '/runcontrol/fcup'
     def __init__(self, runmin, runmax, slope, offset, atten):
         self.runmin = runmin
         self.runmax = runmax
@@ -232,90 +219,94 @@ def process(args, runmin, runmax):
     atten = get_atten(runmin, result.stops[0][1], result.energies[0][1])
     if result.offset and result.noffsets > 10 and atten:
         f = FcupTable(runmin, runmax, 906.2, result.offset, atten)
-        print(f)
+        if args.v:
+            print(f)
         return f
     return False
 
 if __name__ == '__main__':
 
-    cli = argparse.ArgumentParser(description='Calibrate Faraday cup offset and attenuation for CCDB.')
+    cli = argparse.ArgumentParser(description='Calibrate Faraday cup offset and attenuation for CCDB.',epilog='For details, see https://clasweb.jlab.org/wiki/index.php/CLAS12_Faraday_Cup_Calibration_Procedure.  Note, after a year or two, EPICS data are moved to the Mya "history" deployment and may require using the -m option.  Example usage:  "fcup-calib.py -m history 17100,17101"') 
     cli.add_argument('runs', help='run range or list, e.g., 100-200 or 1,4,7 or 1 4 7', nargs='*')
     cli.add_argument('-s', help='single calculation over all runs', default=False, action='store_true')
     cli.add_argument('-d', help='dry run, no output files', default=False, action='store_true')
     cli.add_argument('-v', help='verbose mode', default=False, action='store_true')
     cli.add_argument('-q', help='quiet mode', default=False, action='store_true')
     cli.add_argument('-m', help='Mya deployment (default=ops)', default='ops', choices=['ops','history'])
-    cli.add_argument('-i', help='print detailed information', default=False, action='store_true')
     args = cli.parse_args(sys.argv[1:])
-
-    sep = '\n'+':'*30
-
-    if args.i:
-        cli.print_usage()
-        print('\n'+cli.description)
-        print(sep)
-        print(info)
-        sys.exit(0)
 
     if len(args.runs) == 0:
         cli.error('runs argument is required')
-
     if not args.d:
         tee = Tee('./fcup-calib_%s.log'%timestamp.replace(' ','_').replace('/','-'),'w')
 
     try:
-        if len(args.runs)>1:
+        if len(args.runs)>1 or args.runs[0].isdigit():
+            # it's a space-separated list of runs
             args.runs = sorted([ int(x) for x in args.runs ])
-        elif args.runs[0].find('-') > 0:
-            args.min,args.max = [int(x) for x in args.runs[0].split('-')]
-            if args.max < args.min:
-                cli.error('max is less than min')
-        else:
+            args.min = args.runs[0]
+            args.max = args.runs[len(args.runs)-1]
+        elif ',' in args.runs[0]:
+            # it's a comma-separated list of runs
             args.runs = sorted([ int(x) for x in args.runs[0].split(',') ])
             args.min = args.runs[0]
             args.max = args.runs[len(args.runs)-1]
+        elif '-' in args.runs[0]:
+            # it's a dash-separated run range
+            args.min,args.max = [int(x) for x in args.runs[0].split('-')]
+            args.runs = None
+            if args.max < args.min:
+                cli.error('max is less than min')
+        else:
+            raise ValueError()
     except (ValueError,TypeError):
         cli.error('Invalid "runs" argument:  '+str(args.runs))
 
-    runs = []
     args.db = RCDB()
     atexit.register(args.db.cleanup)
+    runs = []
 
     if args.s:
+        # single calibration over inclusive, full time range:
         runs.append(('%s-%s'%(args.min,args.max), process(args, args.min, args.max)))
-    elif len(args.runs) > 1:
+    elif args.runs:
+        # one calibration per run:
         for run in args.runs:
             runs.append((str(run), process(args, run, run)))
             run = args.db.db.get_next_run(run).number
     else:
+        # one calibration per run in RCDB: 
         run = args.min
         while run <= args.max:
             runs.append((str(run), process(args, run, run)))
             run = args.db.db.get_next_run(run).number
 
+    # print a bunch of stuff:
+    sep = '\n'+':'*40
     ngood = len(list(filter(lambda x : x[1], runs)))
     nbad = len(list(filter(lambda x : not x[1], runs)))
-
     if ngood > 0:
         print(sep+'\n: Runs Calibrated (%d)'%ngood+sep)
-        [ print(r[0]) for r in filter(lambda x : x[1], runs) ]
+        [ print(r[0],':',str(r[1]).split('\n').pop().lstrip(' 0')) for r in filter(lambda x : x[1], runs) ]
         if not args.d:
             print(sep+'\n: To Upload'+sep)
             print('1. set CCDB_CONNECTION for clas12writer')
             print('2. cd %s\n3. chmod +x upload\n4. ./upload'%out_dir)
-
     if nbad > 0:
         print(sep+'\n: Runs with Errors (%d)'%nbad+sep)
         for r in filter(lambda x : not x[1], runs):
             print(r[0],'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
-
     if not args.d:
         print('\nLogs saved to '+tee.name)
         if ngood > 0:
-            print('CCDB tables written to %s\n'%out_dir)
             os.makedirs(out_dir)
             with open('%s/upload'%out_dir,'w') as f:
                 for run in filter(lambda x : x[1], runs):
                     run[1].save()
                     f.write(run[1].get_cmd()+'\n')
+            with open('%s/view'%out_dir,'w') as f:
+                for run in filter(lambda x : x[1], runs):
+                    f.write('%d %.2f %.2f %.5f\n'%(run[1].runmin,run[1].slope,run[1].offset,run[1].atten))
+            print('CCDB tables written to %s'%out_dir)
+            print('Table for plotting written to %s/view\n'%out_dir)
 
