@@ -16,8 +16,6 @@ import requests
 import sqlalchemy
 import rcdb
 
-#requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
-
 version = 'v1.0'
 timestamp = datetime.datetime.now().strftime('%y/%m/%d %H:%M:%S')
 out_dir = './fcup-calib_%s'%timestamp.replace(' ','_').replace('/','-')
@@ -121,12 +119,22 @@ class FcupTable:
     def get_cmd(self):
         return 'ccdb -c $CCDB_CONNECTION add -r %d-%d %s'%(self.runmin,self.runmax,os.path.basename(self.filename))
 
+def authenticate_mya(session):
+    url = 'https://epicsweb.jlab.org/'
+    print("Please enter your CUE login credentials.")
+    print("Username: ", file=sys.stderr, end="")
+    username = input("")
+    password = getpass.getpass("Password: ")
+    payload = {'httpd_username': username, 'httpd_password': password, "login": "Login"}
+    session.get(url)
+    session.post(url, data=payload)
+
 def load_mya(dfs, pv, alias, args):
-    start = time.perf_counter()
     url = 'https://epicsweb.jlab.org/myquery/interval?p=1&a=1&d=1'
     url += '&c=%s&m=%s&b=%s&e=%s'%(pv,args.m,args.start,args.end)
+    start = time.perf_counter()
     if args.v:  print(url)
-    dfs[alias] = pandas.DataFrame(requests.get(url).json().get('data'))
+    dfs[alias] = pandas.DataFrame(args.session.get(url).json().get('data'))
     dfs[alias].rename(columns={'d':'t', 'v':alias}, inplace=True)
     if args.v:  print(dfs[alias])
     if not args.q:
@@ -261,6 +269,13 @@ if __name__ == '__main__':
             raise ValueError()
     except (ValueError,TypeError):
         cli.error('Invalid "runs" argument:  '+str(args.runs))
+
+    args.session = requests.session()
+    host = os.uname().nodename
+    if host.find('clon')==0 or host.find('ifarm')==0 or host.find('jlab.org') >= 0:
+        pass
+    else:
+        mya_authenticate(args.session)
 
     args.db = RCDB()
     atexit.register(args.db.cleanup)
