@@ -50,9 +50,7 @@ attenuations = {
 }
 
 example_url_offset = 'https://epicsweb.jlab.org/wave/?start=2023-12-09T20%3A41%3A10.315&end=2023-12-09T20%3A46%3A10.315&myaDeployment=&myaLimit=100000&windowMinutes=30&title=&fullscreen=false&layoutMode=1&viewerMode=1&pv=IPM2C21A&pv=scalerS2b&IPM2C21Alabel=Beam+Current+-+2C21A+BPM+%28nA%29&IPM2C21Acolor=%230000ff&IPM2C21AyAxisLabel=&IPM2C21AyAxisMin=&IPM2C21AyAxisMax=&IPM2C21AyAxisLog&IPM2C21Ascaler=&scalerS2blabel=Raw+Faraday+Cup+%28Hz%29&scalerS2bcolor=%23ff0000&scalerS2byAxisLabel=&scalerS2byAxisMin=&scalerS2byAxisMax=&scalerS2byAxisLog&scalerS2bscaler='
-
 example_url_stop = 'https://epicsweb.jlab.org/wave/?start=2023-12-09T21%3A46%3A29.975&end=2023-12-09T21%3A51%3A29.975&myaDeployment=&myaLimit=100000&windowMinutes=30&title=&fullscreen=false&layoutMode=1&viewerMode=1&pv=beam_stop&pv=MBSY2C_energy&MBSY2C_energylabel=Beam+Energy+%28MeV%29&MBSY2C_energycolor=%230000ff&MBSY2C_energyyAxisLabel=&MBSY2C_energyyAxisMin=&MBSY2C_energyyAxisMax=&MBSY2C_energyyAxisLog&MBSY2C_energyscaler=&beam_stoplabel=Beam+Stopper+Position&beam_stopcolor=%23ff0000&beam_stopyAxisLabel=&beam_stopyAxisMin=&beam_stopyAxisMax=&beam_stopyAxisLog&beam_stopscaler='
-
 info = '''
 Run start and end times are determined from RCDB, corresponding EPICS data is retrieved from the Mya archive, and Faraday cup calibrations are prepared for uploading to CCDB\'s /runcontrol/fcup table.
 
@@ -60,7 +58,7 @@ Run start and end times are determined from RCDB, corresponding EPICS data is re
 
 * Beam stopper attenuation is based on beam energy and an internal lookup table that may require updating for new experimental conditions.
 
-* Issues detected, e.g., invalid parameters from RCDB, multiple or unkonwn beam energies, or multiple beam stopper positions in a single run, are reported and no tables are generated for affected runs.
+* Detected issues, e.g., invalid parameters from RCDB, multiple or unkonwn beam energies, or multiple beam stopper positions in a single run, are reported and no tables are generated for affected runs.
 
 * After a year or two, EPICS data are moved to the Mya "history" deployment and may require using the -m option.
 
