@@ -21,6 +21,9 @@ energy_tolerance_MeV = 10.0
 # position threshold for beam stopper: 
 stopper_threshold = 10.0
 
+# ignore any readings above this:
+fcup_maximum_offset = 2000
+
 # beam stopper calibrations:
 # FIXME: index by run number instead of energy
 attenuations = {
@@ -138,18 +141,19 @@ def get_atten(run, stopper, energy):
     print('ERROR:  Unknown beam energy:  %.2f'%energy)
     return None
 
-def analyze(df):
+def analyze(df, args):
     import types
     ret = types.SimpleNamespace(table=None,slope=None,atten=None,offset=None,noffsets=0,stops=[],energies=[])
     start_time = None
     offsets,fcups = [],[]
+    ret.energies = list(df[df.energy.notnull()].energy)
+    ret.stops = list(df[df.stop.notnull()].stop)
+    if args.v:
+        print(df.to_string())
     for x in df.iterrows():
-        if not math.isnan(x[1].energy):
-            ret.energies.append((x[1].t,x[1].energy))
-        if not math.isnan(x[1].stop):
-            ret.stops.append((x[1].t,x[1].stop))
+        print(x[1].t,x[1].energy,x[1].stop,x[1].fcup,x[1].bpm)
         if start_time is not None:
-            if not math.isnan(x[1].fcup):
+            if not math.isnan(x[1].fcup) and x[1].fcup<fcup_maximum_offset:
                 if x[1].t > start_time + 1000*bpm_veto_seconds[0]:
                     fcups.append((x[1].t, x[1].fcup))
         if not math.isnan(x[1].bpm):
@@ -158,14 +162,15 @@ def analyze(df):
                     start_time = x[1].t
                     fcups = []
             elif start_time is not None:
+                start_time = None
                 for k,v in fcups:
                     if k < x[1].t - 1000*bpm_veto_seconds[1]:
                         offsets.append(v)
-                start_time = None
     ret.noffsets = len(offsets)
     if ret.noffsets > 0:
         import functools
-        #print(' '.join([str(x) for x in offsets]))
+        if args.v:
+            print('Offsets:  '+' '.join([str(x) for x in offsets]))
         ret.offset = functools.reduce(lambda x,y: x+y, offsets) / len(offsets)
         ret.offset_rms = math.sqrt(sum([ math.pow(x-ret.offset,2) for x in offsets]) / len(offsets))
     return ret
@@ -196,25 +201,23 @@ def process(args, runmin, runmax):
     if args.v:  print(df)
     if not args.q:  print('Analyzing data ...')
     start = time.perf_counter()
-    result = analyze(df)
+    result = analyze(df, args)
     if not args.q:
         print('Analyzing data took %.1f seconds.'%(time.perf_counter()-start))
         print('Found %d fcup offset points with an average of %s.'%
         (result.noffsets,str(result.offset)))
-    for i in range(1,len(result.energies)):
-        if result.energies[i][1] != result.energies[i-1][1]:
-            print('ERROR:  found multiple beam energies.')
-            return False
-    for i in range(1,len(result.stops)):
-        if result.stops[i][1] != result.stops[i-1][1]:
-            print('ERROR:  found multiple beam stopper positions.')
-            return False
+    if len(set(result.energies)) > 1:
+        print('ERROR:  found multiple beam energies for %d:  %s'%(runmin,' '.join([str(x) for x in result.energies])))
+        return False
+    if len(set(result.stops)) > 1:
+        print('ERROR:  found multiple beam stopper positions for %d:  %s'%(runmin,' '.join([str(x) for x in result.stops])))
+        return False
     if result.noffsets < 5:
         print('ERROR:  only %d points found for fcup offset for %d-%d.'%(result.noffsets,runmin,runmax))
         return False
-    if result.noffsets < 10:
+    elif result.noffsets < 10:
         print('WARNING:  only %d points found for fcup offset for %d-%d.'%(result.noffsets,runmin,runmax))
-    atten = get_atten(runmin, result.stops[0][1], result.energies[0][1])
+    atten = get_atten(runmin, result.stops[0], result.energies[0])
     if result.offset and result.noffsets > 10 and atten:
         f = FcupTable(runmin, runmax, 906.2, result.offset, result.offset_rms, atten)
         if args.v:
