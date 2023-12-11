@@ -3,20 +3,8 @@ import os
 import sys
 import math
 import time
-import types
-import atexit
-import getpass
 import argparse
 import datetime
-import functools
-import concurrent.futures
-
-import pandas
-import requests
-import sqlalchemy
-import rcdb
-
-#requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
 version = 'v1.0'
 timestamp = datetime.datetime.now().strftime('%y/%m/%d %H:%M:%S')
@@ -70,17 +58,16 @@ class Tee(object):
 # Convenience/exception wrapper for RCDB:
 class RCDB:
     def __init__(self):
+        import sqlalchemy
+        import rcdb
         self.db = None
-        if os.getenv('RCDB_CONNECTION') is None:
-            print('ERROR:  Undefined $RCDB_CONNECTION.')
+        self.url = 'mysql://rcdb@clasdb-farm.jlab.org/rcdb'
+        try:
+            self.db = rcdb.RCDBProvider(self.url)
+            self.db.get_condition_types()
+        except (AttributeError,sqlalchemy.exc.ArgumentError,sqlalchemy.exc.OperationalError):
+            print('Could not connect to RCDB at '+self.url)
             sys.exit(1)
-        else:
-            try:
-                self.db = rcdb.RCDBProvider(os.getenv('RCDB_CONNECTION'))
-                self.db.get_condition_types()
-            except (AttributeError,sqlalchemy.exc.ArgumentError,sqlalchemy.exc.OperationalError):
-                print('Invalid $RCDB_CONNECTION: %s'%os.getenv('RCDB_CONNECTION'))
-                sys.exit(1)
     def get_condition(self,run, name):
         try:
             return self.db.get_condition(run, name).value
@@ -126,6 +113,8 @@ def load_mya(dfs, pv, alias, args):
     url = 'https://epicsweb.jlab.org/myquery/interval?p=1&a=1&d=1'
     url += '&c=%s&m=%s&b=%s&e=%s'%(pv,args.m,args.start,args.end)
     if args.v:  print(url)
+    import requests
+    import pandas
     dfs[alias] = pandas.DataFrame(requests.get(url).json().get('data'))
     dfs[alias].rename(columns={'d':'t', 'v':alias}, inplace=True)
     if args.v:  print(dfs[alias])
@@ -147,6 +136,7 @@ def get_atten(run, stopper, energy):
     return None
 
 def analyze(df):
+    import types
     ret = types.SimpleNamespace(table=None,slope=None,atten=None,offset=None,noffsets=0,stops=[],energies=[])
     start_time = None
     offsets,fcups = [],[]
@@ -171,6 +161,7 @@ def analyze(df):
                 start_time = None
     ret.noffsets = len(offsets)
     if ret.noffsets > 0:
+        import functools
         ret.offset = functools.reduce(lambda x,y: x+y, offsets) / len(offsets)
     return ret
 
@@ -183,6 +174,7 @@ def process(args, runmin, runmax):
     dfs = {}
     if not args.q:
         print('Using Mya date range:  %s (%d) -> %s (%d)'%(args.start,runmin,args.start,runmax))
+    import concurrent.futures
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
         for pv,alias in pv_names.items():
@@ -194,6 +186,7 @@ def process(args, runmin, runmax):
     if [ max(max_len,len(df.index)) for df in dfs.values() ].pop() <= 2:
         print('ERROR:  No intermediate data found.  Maybe try the other deployment?')
         return False
+    import pandas
     df = pandas.concat(dfs.values()).sort_values('t')
     if args.v:  print(df)
     if not args.q:  print('Analyzing data ...')
@@ -263,6 +256,7 @@ if __name__ == '__main__':
         cli.error('Invalid "runs" argument:  '+str(args.runs))
 
     args.db = RCDB()
+    import atexit
     atexit.register(args.db.cleanup)
     runs = []
 
