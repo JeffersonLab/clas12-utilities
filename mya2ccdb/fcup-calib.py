@@ -205,7 +205,7 @@ def process(args, runmin, runmax):
     df = pandas.concat(dfs.values()).sort_values('t')
     if args.v>0:
         print('Analyzing data ...')
-        if args.v>2:  print(df)
+        if args.v>1:  print(df)
     start = time.perf_counter()
     result = analyze(df, args)
     if args.v>0:
