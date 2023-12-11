@@ -92,16 +92,19 @@ class RCDB:
 # Convenience class for CCDB table:
 class FcupTable:
     table_name = '/runcontrol/fcup'
-    def __init__(self, runmin, runmax, slope, offset, atten):
+    def __init__(self, runmin, runmax, slope, offset, offset_rms, atten):
         self.runmin = runmin
         self.runmax = runmax
         self.slope = slope
         self.offset = offset
+        self.offset_rms = offset_rms
         self.atten = atten
         self.filename = '%s/fcup-%d-%d.txt'%(out_dir,runmin,runmax)
     def __str__(self):
         s = '# %s-%s %s %d-%d\n'%(os.path.basename(__file__),version,timestamp,self.runmin,self.runmax)
         return s + '0 0 0 %.2f %.2f %.5f'%(self.slope, self.offset, self.atten)
+    def pretty(self):
+        return '%.2f %.2f(%.2f) %.5f'%(self.slope, self.offset, self.offset_rms, self.atten)
     def save(self):
         with open(self.filename,'w') as f:
             f.write(str(self))
@@ -162,7 +165,9 @@ def analyze(df):
     ret.noffsets = len(offsets)
     if ret.noffsets > 0:
         import functools
+        #print(' '.join([str(x) for x in offsets]))
         ret.offset = functools.reduce(lambda x,y: x+y, offsets) / len(offsets)
+        ret.offset_rms = math.sqrt(sum([ math.pow(x-ret.offset,2) for x in offsets]) / len(offsets))
     return ret
 
 def process(args, runmin, runmax):
@@ -184,7 +189,7 @@ def process(args, runmin, runmax):
         concurrent.futures.wait(futures)
     max_len = 0
     if [ max(max_len,len(df.index)) for df in dfs.values() ].pop() <= 2:
-        print('ERROR:  No intermediate data found.  Maybe try the other deployment?')
+        print('ERROR:  No intermediate data found for %d-%d.  Maybe try the other deployment?'%(runmin,runmax))
         return False
     import pandas
     df = pandas.concat(dfs.values()).sort_values('t')
@@ -205,13 +210,13 @@ def process(args, runmin, runmax):
             print('ERROR:  found multiple beam stopper positions.')
             return False
     if result.noffsets < 5:
-        print('ERROR:  only %d points found for fcup offset.'%result.noffsets)
+        print('ERROR:  only %d points found for fcup offset for %d-%d.'%(result.noffsets,runmin,runmax))
         return False
-    elif result.noffsets < 10:
-        print('WARNING:  only %d points found for fcup offset.'%result.noffsets)
+    if result.noffsets < 10:
+        print('WARNING:  only %d points found for fcup offset for %d-%d.'%(result.noffsets,runmin,runmax))
     atten = get_atten(runmin, result.stops[0][1], result.energies[0][1])
     if result.offset and result.noffsets > 10 and atten:
-        f = FcupTable(runmin, runmax, 906.2, result.offset, atten)
+        f = FcupTable(runmin, runmax, 906.2, result.offset, result.offset_rms, atten)
         if args.v:
             print(f)
         return f
@@ -281,7 +286,7 @@ if __name__ == '__main__':
     nbad = len(list(filter(lambda x : not x[1], runs)))
     if ngood > 0:
         print(sep+'\n: Runs Calibrated (%d)'%ngood+sep)
-        [ print(r[0],':',str(r[1]).split('\n').pop().lstrip(' 0')) for r in filter(lambda x : x[1], runs) ]
+        [ print(r[0],':',r[1].pretty()) for r in filter(lambda x : x[1], runs) ]
         if not args.d:
             print(sep+'\n: To Upload'+sep)
             print('1. set CCDB_CONNECTION for clas12writer')
@@ -300,7 +305,7 @@ if __name__ == '__main__':
                     f.write(run[1].get_cmd()+'\n')
             with open('%s/view'%out_dir,'w') as f:
                 for run in filter(lambda x : x[1], runs):
-                    f.write('%d %.2f %.2f %.5f\n'%(run[1].runmin,run[1].slope,run[1].offset,run[1].atten))
+                    f.write('%d %.2f %.2f %.2f %.5f\n'%(run[1].runmin,run[1].slope,run[1].offset,run[1].offset_rms,run[1].atten))
             print('CCDB tables written to %s'%out_dir)
             print('Table for plotting written to %s/view\n'%out_dir)
 
