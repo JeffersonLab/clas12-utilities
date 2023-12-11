@@ -122,7 +122,8 @@ def load_mya(dfs, pv, alias, args):
         print(url)
     import requests
     import pandas
-    dfs[alias] = pandas.DataFrame(requests.get(url).json().get('data'))
+    request = requests.get(url, timeout=1.0)
+    dfs[alias] = pandas.DataFrame(request.json().get('data'))
     dfs[alias].rename(columns={'d':'t', 'v':alias}, inplace=True)
     if args.v>0:
         print('Got %d points from Mya for %s in %.1f seconds.'
@@ -193,8 +194,11 @@ def process(args, runmin, runmax):
                 print('Reading %s from Mya ...'%pv)
             futures.append(executor.submit(load_mya,dfs,pv,alias,args))
         concurrent.futures.wait(futures)
-    max_len = 0
-    if [ max(max_len,len(df.index)) for df in dfs.values() ].pop() <= 2:
+        for f in futures:
+            if f.exception() is not None:
+                print(f.exception())
+                sys.exit(222)
+    if max([ len(x.index) for x in dfs.values()]) <= 2:
         print('ERROR:  no data found for %d-%d.'%(runmin,runmax))
         return False
     import pandas
