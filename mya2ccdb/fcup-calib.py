@@ -13,7 +13,7 @@ pv_names = {'scalerS2b':'fcup','beam_stop':'stop','IPM2C21A':'bpm','MBSY2C_energ
 
 # beam current veto parameters:
 bpm_veto_nA = 0.1
-bpm_veto_seconds = [10.0,5.0]
+bpm_veto_seconds = [5.0,10.0]
 
 # tolerance for choosing stopper attenuation:
 energy_tolerance_MeV = 10.0
@@ -118,15 +118,17 @@ def load_mya(dfs, pv, alias, args):
     start = time.perf_counter()
     url = 'https://epicsweb.jlab.org/myquery/interval?p=1&a=1&d=1'
     url += '&c=%s&m=%s&b=%s&e=%s'%(pv,args.m,args.start,args.end)
-    if args.v:  print(url)
+    if args.v>1:
+        print(url)
     import requests
     import pandas
     dfs[alias] = pandas.DataFrame(requests.get(url).json().get('data'))
     dfs[alias].rename(columns={'d':'t', 'v':alias}, inplace=True)
-    if args.v:  print(dfs[alias])
-    if not args.q:
+    if args.v>0:
         print('Got %d points from Mya for %s in %.1f seconds.'
             %(len(dfs[alias].index), pv, time.perf_counter()-start))
+        if args.v>1:
+            print(dfs[alias])
 
 def get_atten(run, stopper, energy):
     if stopper < stopper_threshold:
@@ -148,10 +150,9 @@ def analyze(df, args):
     offsets,fcups = [],[]
     ret.energies = list(df[df.energy.notnull()].energy)
     ret.stops = list(df[df.stop.notnull()].stop)
-    if args.v:
+    if args.v>2:
         print(df.to_string())
     for x in df.iterrows():
-        print(x[1].t,x[1].energy,x[1].stop,x[1].fcup,x[1].bpm)
         if start_time is not None:
             if not math.isnan(x[1].fcup) and x[1].fcup<fcup_maximum_offset:
                 if x[1].t > start_time + 1000*bpm_veto_seconds[0]:
@@ -169,7 +170,7 @@ def analyze(df, args):
     ret.noffsets = len(offsets)
     if ret.noffsets > 0:
         import functools
-        if args.v:
+        if args.v>1:
             print('Offsets:  '+' '.join([str(x) for x in offsets]))
         ret.offset = functools.reduce(lambda x,y: x+y, offsets) / len(offsets)
         ret.offset_rms = math.sqrt(sum([ math.pow(x-ret.offset,2) for x in offsets]) / len(offsets))
@@ -182,27 +183,28 @@ def process(args, runmin, runmax):
     args.start = span[0].strftime('%Y-%m-%dT%H:%M:%S')
     args.end = span[1].strftime('%Y-%m-%dT%H:%M:%S')
     dfs = {}
-    if not args.q:
+    if args.v>1:
         print('Using Mya date range:  %s (%d) -> %s (%d)'%(args.start,runmin,args.start,runmax))
     import concurrent.futures
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
         for pv,alias in pv_names.items():
-            if not args.q:
+            if args.v>0:
                 print('Reading %s from Mya ...'%pv)
             futures.append(executor.submit(load_mya,dfs,pv,alias,args))
         concurrent.futures.wait(futures)
     max_len = 0
     if [ max(max_len,len(df.index)) for df in dfs.values() ].pop() <= 2:
-        print('ERROR:  No intermediate data found for %d-%d.  Maybe try the other deployment?'%(runmin,runmax))
+        print('ERROR:  no data found for %d-%d.'%(runmin,runmax))
         return False
     import pandas
     df = pandas.concat(dfs.values()).sort_values('t')
-    if args.v:  print(df)
-    if not args.q:  print('Analyzing data ...')
+    if args.v>0:
+        print('Analyzing data ...')
+        if args.v>2:  print(df)
     start = time.perf_counter()
     result = analyze(df, args)
-    if not args.q:
+    if args.v>0:
         print('Analyzing data took %.1f seconds.'%(time.perf_counter()-start))
         print('Found %d fcup offset points with an average of %s.'%
         (result.noffsets,str(result.offset)))
@@ -220,7 +222,7 @@ def process(args, runmin, runmax):
     atten = get_atten(runmin, result.stops[0], result.energies[0])
     if result.offset and result.noffsets > 10 and atten:
         f = FcupTable(runmin, runmax, 906.2, result.offset, result.offset_rms, atten)
-        if args.v:
+        if args.v>0:
             print(f)
         return f
     return False
@@ -231,8 +233,7 @@ if __name__ == '__main__':
     cli.add_argument('runs', help='run range or list, e.g., 100-200 or 1,4,7 or 1 4 7', nargs='*')
     cli.add_argument('-s', help='single calculation over all runs', default=False, action='store_true')
     cli.add_argument('-d', help='dry run, no output files', default=False, action='store_true')
-    cli.add_argument('-v', help='verbose mode', default=False, action='store_true')
-    cli.add_argument('-q', help='quiet mode', default=False, action='store_true')
+    cli.add_argument('-v', help='verbose mode (multiple allowed)', default=0, action='count')
     cli.add_argument('-m', help='Mya deployment (default=ops)', default='ops', choices=['ops','history'])
     args = cli.parse_args(sys.argv[1:])
 
