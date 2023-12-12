@@ -118,7 +118,7 @@ def load_mya(dfs, pv, alias, args):
     start = time.perf_counter()
     url = 'https://epicsweb.jlab.org/myquery/interval?p=1&a=1&d=1'
     url += '&c=%s&m=%s&b=%s&e=%s'%(pv,args.m,args.start,args.end)
-    if args.v>1:
+    if args.v>2:
         print(url)
     import requests
     import pandas
@@ -146,11 +146,8 @@ def get_atten(run, stopper, energy):
 
 def analyze(df, args):
     import types
-    ret = types.SimpleNamespace(table=None,slope=None,atten=None,offset=None,noffsets=0,stops=[],energies=[])
     start_time = None
     offsets,fcups = [],[]
-    ret.energies = list(df[df.energy.notnull()].energy)
-    ret.stops = list(df[df.stop.notnull()].stop)
     if args.v>2:
         print(df.to_string())
     for x in df.iterrows():
@@ -168,7 +165,10 @@ def analyze(df, args):
                 for k,v in fcups:
                     if k < x[1].t - 1000*bpm_veto_seconds[1]:
                         offsets.append(v)
+    ret = types.SimpleNamespace(table=None,slope=None,atten=None,offset=None)
     ret.noffsets = len(offsets)
+    ret.energies = list(df[df.energy.notnull()].energy)
+    ret.stops = list(df[df.stop.notnull()].stop)
     if ret.noffsets > 0:
         import functools
         if args.v>1:
