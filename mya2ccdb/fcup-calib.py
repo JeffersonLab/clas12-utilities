@@ -28,7 +28,7 @@ fcup_maximum_offset = 2000
 # FIXME: index by run number instead of energy
 attenuations = {
     10604 : 9.8088,
-    10532 : None,    # RG-D
+    10532 : 5.79985,     # RG-D
     10547 : 9.1508,  # RG-C
     10409 : 9.6930,
     10405 : 9.6930,  # unmeasured during BONuS, copied from 10409
@@ -121,11 +121,14 @@ def load_mya(dfs, pv, alias, args):
     if args.v>2:
         print(url)
     import requests
+    from requests.adapters import HTTPAdapter,Retry
     import pandas
     requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
-
-    request = requests.get(url, timeout=1.0, verify=False)
-    dfs[alias] = pandas.DataFrame(request.json().get('data'))
+    retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[500,502,503,504])
+    session = requests.Session()
+    session.mount(url, HTTPAdapter(max_retries=retries))
+    result = session.get(url, timeout=1.0, verify=False)
+    dfs[alias] = pandas.DataFrame(result.json().get('data'))
     dfs[alias].rename(columns={'d':'t', 'v':alias}, inplace=True)
     if args.v>0:
         print('Got %d points from Mya for %s in %.1f seconds.'
