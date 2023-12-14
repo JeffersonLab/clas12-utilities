@@ -77,6 +77,8 @@ class RCDB:
         except AttributeError:
             print('ERROR:  %s unavailable for run %d in RCDB.'%(name, run))
             return None
+    def get_event_count(self, run):
+        return self.get_condition(run, 'event_count')
     def get_timespan(self, first_run, last_run):
         start = self.get_condition(first_run, 'run_start_time')
         end = self.get_condition(last_run, 'run_end_time')
@@ -95,20 +97,27 @@ class RCDB:
 # Convenience class for CCDB table:
 class FcupTable:
     table_name = '/runcontrol/fcup'
-    def __init__(self, runmin, runmax, slope, offset, offset_rms, atten):
+    def __init__(self, runmin=None, runmax=None, offset=None, offset_rms=None, atten=None, slope=906.2):
         self.runmin = runmin
         self.runmax = runmax
         self.slope = slope
         self.offset = offset
         self.offset_rms = offset_rms
         self.atten = atten
-        self.filename = '%s/fcup-%d-%d.txt'%(out_dir,runmin,runmax)
+        self.span = None
     def __str__(self):
         s = '# %s-%s %s %d-%d\n'%(os.path.basename(__file__),version,timestamp,self.runmin,self.runmax)
         return s + '0 0 0 %.2f %.2f %.5f'%(self.slope, self.offset, self.atten)
+    def status(self):
+        return self.offset is not None and self.atten is not None
+    def minutes(self):
+        if self.span is not None:
+            return '%.1f'%((self.span[1]-self.span[0]).seconds/60)
+        return '?'
     def pretty(self):
         return '%.2f %.2f(%.2f) %.5f'%(self.slope, self.offset, self.offset_rms, self.atten)
     def save(self):
+        self.filename = '%s/fcup-%d-%d.txt'%(out_dir,self.runmin,self.runmax)
         with open(self.filename,'w') as f:
             f.write(str(self))
     def get_cmd(self):
@@ -170,10 +179,10 @@ def analyze(df, args):
                 for k,v in fcups:
                     if k < x[1].t - 1000*bpm_veto_seconds[1]:
                         offsets.append(v)
-    ret = types.SimpleNamespace(table=None,slope=None,atten=None,offset=None)
+    ret = FcupTable()
     ret.noffsets = len(offsets)
-    ret.energies = list(df[df.energy.notnull()].energy)
-    ret.stops = list(df[df.stop.notnull()].stop)
+    ret.energies = list(set(list(df[df.energy.notnull()].energy)))
+    ret.stops = list(set(list(df[df.stop.notnull()].stop)))
     if ret.noffsets > 0:
         import functools
         if args.v>1:
@@ -183,9 +192,10 @@ def analyze(df, args):
     return ret
 
 def process(args, runmin, runmax):
+    ret = FcupTable()
     span = args.db.get_timespan(runmin, runmax)
     if span is None:
-        return False
+        return ret
     args.start = span[0].strftime('%Y-%m-%dT%H:%M:%S')
     args.end = span[1].strftime('%Y-%m-%dT%H:%M:%S')
     dfs = {}
@@ -205,36 +215,36 @@ def process(args, runmin, runmax):
                 sys.exit(222)
     if max([ len(x.index) for x in dfs.values()]) <= 2:
         print('ERROR:  no data found for %d-%d.'%(runmin,runmax))
-        return False
+        return ret
     import pandas
     df = pandas.concat(dfs.values()).sort_values('t')
     if args.v>0:
         print('Analyzing data ...')
         if args.v>1:  print(df)
     start = time.perf_counter()
-    result = analyze(df, args)
+    ret = analyze(df, args)
+    ret.runmin = runmin
+    ret.runmax = runmax
+    ret.span = span
     if args.v>0:
         print('Analyzing data took %.1f seconds.'%(time.perf_counter()-start))
         print('Found %d fcup offset points with an average of %s.'%
-        (result.noffsets,str(result.offset)))
-    if len(set(result.energies)) > 1:
-        print('ERROR:  found multiple beam energies for %d:  %s'%(runmin,' '.join([str(x) for x in result.energies])))
-        return False
-    if len(set(result.stops)) > 1:
-        print('ERROR:  found multiple beam stopper positions for %d:  %s'%(runmin,' '.join([str(x) for x in result.stops])))
-        return False
-    if result.noffsets < 5:
-        print('ERROR:  only %d points found for fcup offset for %d-%d.'%(result.noffsets,runmin,runmax))
-        return False
-    elif result.noffsets < 10:
-        print('WARNING:  only %d points found for fcup offset for %d-%d.'%(result.noffsets,runmin,runmax))
-    atten = get_atten(runmin, result.stops[0], result.energies[0])
-    if result.offset and result.noffsets > 10 and atten:
-        f = FcupTable(runmin, runmax, 906.2, result.offset, result.offset_rms, atten)
-        if args.v>0:
-            print(f)
-        return f
-    return False
+        (ret.noffsets,str(ret.offset)))
+    if len(ret.energies) > 1:
+        print('ERROR:  found multiple beam energies for %d:  %s'%(runmin,' '.join([str(x) for x in ret.energies])))
+        return ret
+    if len(ret.stops) > 1:
+        print('ERROR:  found multiple beam stopper positions for %d:  %s'%(runmin,' '.join([str(x) for x in ret.stops])))
+        return ret
+    if ret.noffsets < 5:
+        print('ERROR:  only %d points found for fcup offset for %d-%d.'%(ret.noffsets,runmin,runmax))
+        return ret
+    elif ret.noffsets < 10:
+        print('WARNING:  only %d points found for fcup offset for %d-%d.'%(ret.noffsets,runmin,runmax))
+    ret.atten = get_atten(runmin, ret.stops[0], ret.energies[0])
+    if ret.status() and args.v>0:
+        print(ret)
+    return ret
 
 def plot(path):
     import pandas as pd
@@ -249,7 +259,7 @@ def plot(path):
     ey = data[3]
     plt.plot(x, y,'r',marker='.',linestyle='')
     plt.errorbar(x, y, xerr=None, yerr=ey, fmt='r',marker='.',linestyle='')
-    print('Crtl-C or close plot window to quit.')
+    print('Close plot window to quit.')
     plt.show()
 
 if __name__ == '__main__':
@@ -259,9 +269,13 @@ if __name__ == '__main__':
     cli.add_argument('-s', help='single calculation over all runs', default=False, action='store_true')
     cli.add_argument('-d', help='dry run, no output files', default=False, action='store_true')
     cli.add_argument('-v', help='verbose mode (multiple allowed)', default=0, action='count')
-    cli.add_argument('-g', help='graphics mode', default=False, action='store_true')
+    cli.add_argument('-g', help='graphics mode (optionally, specify path to previously generated view file', metavar='VIEW', default=False, const=True, nargs='?')
     cli.add_argument('-m', help='Mya deployment (default=ops)', default='ops', choices=['ops','history'])
     args = cli.parse_args(sys.argv[1:])
+
+    if isinstance(args.g, str):
+        plot(args.g)
+        sys.exit(0)
 
     if len(args.runs) == 0:
         cli.error('runs argument is required')
@@ -312,29 +326,29 @@ if __name__ == '__main__':
 
     # print a bunch of stuff:
     sep = '\n'+':'*40
-    ngood = len(list(filter(lambda x : x[1], runs)))
-    nbad = len(list(filter(lambda x : not x[1], runs)))
+    ngood = len(list(filter(lambda x : x[1].status(), runs)))
+    nbad = len(list(filter(lambda x : not x[1].status(), runs)))
     if ngood > 0:
         print(sep+'\n: Runs Calibrated (%d)'%ngood+sep)
-        [ print(r[0],':',r[1].pretty()) for r in filter(lambda x : x[1], runs) ]
+        [ print(r[0],':',r[1].pretty()) for r in filter(lambda x : x[1].status(), runs) ]
         if not args.d:
             print(sep+'\n: To Upload'+sep)
             print('1. set CCDB_CONNECTION for clas12writer')
             print('2. cd %s\n3. chmod +x upload\n4. ./upload'%out_dir)
     if nbad > 0:
         print(sep+'\n: Runs with Errors (%d)'%nbad+sep)
-        for r in filter(lambda x : not x[1], runs):
-            print(r[0],'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
+        for r in filter(lambda x : not x[1].status(), runs):
+            print(r[0],'[%s minutes long]'%(r[1].minutes()),'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
     if not args.d:
         print('\nLogs saved to '+tee.name)
         if ngood > 0:
             os.makedirs(out_dir)
             with open('%s/upload'%out_dir,'w') as f:
-                for run in filter(lambda x : x[1], runs):
+                for run in filter(lambda x : x[1].status(), runs):
                     run[1].save()
                     f.write(run[1].get_cmd()+'\n')
             with open('%s/view'%out_dir,'w') as f:
-                for run in filter(lambda x : x[1], runs):
+                for run in filter(lambda x : x[1].status(), runs):
                     f.write('%d %.2f %.2f %.2f %.5f\n'%(run[1].runmin,run[1].slope,run[1].offset,run[1].offset_rms,run[1].atten))
             print('CCDB tables written to %s'%out_dir)
             print('Table for plotting written to %s/view\n'%out_dir)
