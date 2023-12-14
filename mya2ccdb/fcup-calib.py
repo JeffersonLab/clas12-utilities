@@ -122,7 +122,9 @@ def load_mya(dfs, pv, alias, args):
         print(url)
     import requests
     import pandas
-    request = requests.get(url, timeout=1.0)
+    requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+
+    request = requests.get(url, timeout=1.0, verify=False)
     dfs[alias] = pandas.DataFrame(request.json().get('data'))
     dfs[alias].rename(columns={'d':'t', 'v':alias}, inplace=True)
     if args.v>0:
@@ -231,6 +233,22 @@ def process(args, runmin, runmax):
         return f
     return False
 
+def plot(path):
+    import pandas as pd
+    data = pd.read_csv(path,sep='\s+',header=None)
+    data = pd.DataFrame(data)
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    ax.set_ylabel('Faraday Cup Offset  (Hz)')
+    ax.set_xlabel('Run Number')
+    x = data[0]
+    y = data[2]
+    ey = data[3]
+    plt.plot(x, y,'r',marker='.',linestyle='')
+    plt.errorbar(x, y, xerr=None, yerr=ey, fmt='r',marker='.',linestyle='')
+    print('Crtl-C or close plot window to quit.')
+    plt.show()
+
 if __name__ == '__main__':
 
     cli = argparse.ArgumentParser(description='Calibrate Faraday cup offset and attenuation for CCDB.',epilog='For details, see https://clasweb.jlab.org/wiki/index.php/CLAS12_Faraday_Cup_Calibration_Procedure.  Note, after a year or two, EPICS data are moved to the Mya "history" deployment and may require using the -m option.  Example usage:  "fcup-calib.py -m history 17100,17101"') 
@@ -238,6 +256,7 @@ if __name__ == '__main__':
     cli.add_argument('-s', help='single calculation over all runs', default=False, action='store_true')
     cli.add_argument('-d', help='dry run, no output files', default=False, action='store_true')
     cli.add_argument('-v', help='verbose mode (multiple allowed)', default=0, action='count')
+    cli.add_argument('-g', help='graphics mode', default=False, action='store_true')
     cli.add_argument('-m', help='Mya deployment (default=ops)', default='ops', choices=['ops','history'])
     args = cli.parse_args(sys.argv[1:])
 
@@ -316,4 +335,6 @@ if __name__ == '__main__':
                     f.write('%d %.2f %.2f %.2f %.5f\n'%(run[1].runmin,run[1].slope,run[1].offset,run[1].offset_rms,run[1].atten))
             print('CCDB tables written to %s'%out_dir)
             print('Table for plotting written to %s/view\n'%out_dir)
+            if args.g:
+                plot('%s/view'%out_dir)
 
