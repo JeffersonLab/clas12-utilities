@@ -94,7 +94,7 @@ class RCDB:
         except AttributeError:
             pass
 
-# Convenience class for CCDB table:
+# Convenience class for CCDB table and storing results:
 class FcupTable:
     table_name = '/runcontrol/fcup'
     def __init__(self, runmin=None, runmax=None, offset=None, offset_rms=None, atten=None, slope=906.2):
@@ -313,7 +313,7 @@ if __name__ == '__main__':
         # single calibration over inclusive, full time range:
         runs.append(('%s-%s'%(args.min,args.max), process(args, args.min, args.max)))
     elif args.runs:
-        # one calibration per run:
+        # one calibration per run from user-specified list:
         for run in args.runs:
             runs.append((str(run), process(args, run, run)))
             run = args.db.db.get_next_run(run).number
@@ -338,7 +338,7 @@ if __name__ == '__main__':
     if nbad > 0:
         print(sep+'\n: Runs with Errors (%d)'%nbad+sep)
         for r in filter(lambda x : not x[1].status(), runs):
-            print(r[0],'[%s minutes long]'%(r[1].minutes()),'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
+            print(r[0],'[%s minutes]'%(r[1].minutes()),'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
     if not args.d:
         print('\nLogs saved to '+tee.name)
         if ngood > 0:
