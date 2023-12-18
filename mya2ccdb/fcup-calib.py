@@ -257,15 +257,12 @@ def plot(path):
     import matplotlib.pyplot as plt
     fig, (ax1,ax2) = plt.subplots(1,2)
     fig.suptitle('Faraday Cup Calibrations')
-    ax2.set_ylabel('Faraday Cup Attenuation')
-    ax1.set_ylabel('Faraday Cup Offset  (Hz)')
     ax1.set_xlabel('Run Number')
-    x = data[0]
-    y = data[2]
-    ey = data[3]
-    ax1.errorbar(x, y, xerr=None, yerr=ey, fmt='r',marker='.',linestyle='')
-    y = data[4]
-    ax2.plot(x, y,'r',marker='.',linestyle='')
+    ax2.set_xlabel('Run Number')
+    ax1.set_ylabel('Faraday Cup Offset  (Hz)')
+    ax2.set_ylabel('Faraday Cup Attenuation')
+    ax1.errorbar(data[0], data[2], yerr=data[3], fmt='r',marker='.',linestyle='')
+    ax2.plot(data[0], data[4],'r',marker='.',linestyle='')
     print('Close plot window to quit.')
     plt.show()
 
