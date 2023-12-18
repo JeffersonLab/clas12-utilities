@@ -70,11 +70,11 @@ class RCDB:
         except (AttributeError,sqlalchemy.exc.ArgumentError,sqlalchemy.exc.OperationalError):
             print('Could not connect to RCDB at '+self.url)
             sys.exit(1)
-    def get_condition(self,run, name):
+    def get_condition(self, run, name):
         try:
-            return self.db.get_condition(run, name).value
+            return self.db.get_condition(int(run), name).value
         except AttributeError:
-            print('ERROR:  %s unavailable for run %d in RCDB.'%(name, run))
+            print('ERROR:  %s unavailable for run %d in RCDB.'%(name, int(run)))
             return None
     def get_timespan(self, first_run, last_run):
         start = self.get_condition(first_run, 'run_start_time')
