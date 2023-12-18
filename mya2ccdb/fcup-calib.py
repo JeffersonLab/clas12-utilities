@@ -28,7 +28,6 @@ fcup_maximum_offset = 2000
 # FIXME: index by run number instead of energy
 attenuations = {
     10604 : 9.8088,
-    10532 : 5.79985,     # RG-D
     10547 : 9.1508,  # RG-C
     10409 : 9.6930,
     10405 : 9.6930,  # unmeasured during BONuS, copied from 10409
@@ -129,6 +128,10 @@ class FcupTable:
             if run>=12444 and run<=12853:
                 # fix bad beam energy from MCC:
                 energy = 10405
+            elif run>=18305 and run<=19131:
+                # RG-D with Faraday cup issues:
+                self.atten = 5.79985
+                return
             for e,a in attenuations.items():
                 if math.fabs(e-energy) < energy_tolerance_MeV:
                     self.atten = a
