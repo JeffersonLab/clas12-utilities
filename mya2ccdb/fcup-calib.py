@@ -122,8 +122,20 @@ class FcupTable:
             f.write(str(self))
     def get_cmd(self):
         return 'ccdb -c $CCDB_CONNECTION add -r %d-%d %s'%(self.runmin,self.runmax,os.path.basename(self.filename))
+    def set_atten(self, run, stopper, energy):
+        if stopper < stopper_threshold:
+            self.atten = 1.0
+        else:
+            if run>=12444 and run<=12853:
+                # fix bad beam energy from MCC:
+                energy = 10405
+            for e,a in attenuations.items():
+                if math.fabs(e-energy) < energy_tolerance_MeV:
+                    self.atten = a
+                    return
+            print('ERROR:  Unknown beam energy:  %.2f'%energy)
 
-def load_mya(dfs, pv, alias, args):
+def get_mya(pv, alias, args):
     start = time.perf_counter()
     url = 'https://epicsweb.jlab.org/myquery/interval?p=1&a=1&d=1'
     url += '&c=%s&m=%s&b=%s&e=%s'%(pv,args.m,args.start,args.end)
@@ -137,26 +149,14 @@ def load_mya(dfs, pv, alias, args):
     session = requests.Session()
     session.mount(url, HTTPAdapter(max_retries=retries))
     result = session.get(url, timeout=1.0, verify=False)
-    dfs[alias] = pandas.DataFrame(result.json().get('data'))
-    dfs[alias].rename(columns={'d':'t', 'v':alias}, inplace=True)
+    df = pandas.DataFrame(result.json().get('data'))
+    df.rename(columns={'d':'t', 'v':alias}, inplace=True)
     if args.v>0:
         print('Got %d points from Mya for %s in %.1f seconds.'
-            %(len(dfs[alias].index), pv, time.perf_counter()-start))
+            %(len(df.index), pv, time.perf_counter()-start))
         if args.v>1:
-            print(dfs[alias])
-
-def get_atten(run, stopper, energy):
-    if stopper < stopper_threshold:
-        return 1.0
-    else:
-        if run>=12444 and run<=12853:
-            # fix bad beam energy from MCC:
-            energy = 10405
-        for e,a in attenuations.items():
-            if math.fabs(e-energy) < energy_tolerance_MeV:
-                return a
-    print('ERROR:  Unknown beam energy:  %.2f'%energy)
-    return None
+            print(df)
+    return df
 
 def analyze(df, args):
     import types
@@ -198,7 +198,7 @@ def process(args, runmin, runmax):
         return ret
     args.start = span[0].strftime('%Y-%m-%dT%H:%M:%S')
     args.end = span[1].strftime('%Y-%m-%dT%H:%M:%S')
-    dfs = {}
+    dfs = []
     if args.v>1:
         print('Using Mya date range:  %s (%d) -> %s (%d)'%(args.start,runmin,args.start,runmax))
     import concurrent.futures
@@ -207,17 +207,18 @@ def process(args, runmin, runmax):
         for pv,alias in pv_names.items():
             if args.v>0:
                 print('Reading %s from Mya ...'%pv)
-            futures.append(executor.submit(load_mya,dfs,pv,alias,args))
+            futures.append(executor.submit(get_mya,pv,alias,args))
         concurrent.futures.wait(futures)
         for f in futures:
             if f.exception() is not None:
                 print(f.exception())
                 sys.exit(222)
-    if max([ len(x.index) for x in dfs.values()]) <= 2:
+            dfs.append(f.result())
+    if max([ len(x.index) for x in dfs]) <= 2:
         print('ERROR:  no data found for %d-%d.'%(runmin,runmax))
         return ret
     import pandas
-    df = pandas.concat(dfs.values()).sort_values('t')
+    df = pandas.concat(dfs).sort_values('t')
     if args.v>0:
         print('Analyzing data ...')
         if args.v>1:  print(df)
@@ -241,7 +242,7 @@ def process(args, runmin, runmax):
         return ret
     elif ret.noffsets < 10:
         print('WARNING:  only %d points found for fcup offset for %d-%d.'%(ret.noffsets,runmin,runmax))
-    ret.atten = get_atten(runmin, ret.stops[0], ret.energies[0])
+    ret.set_atten(runmin, ret.stops[0], ret.energies[0])
     if ret.status() and args.v>0:
         print(ret)
     return ret
