@@ -27,6 +27,9 @@ stopper_deadband = 1.0
 # ignore any readings above this:
 fcup_maximum_offset = 2000
 
+# minimum number of offset readings required:
+minimum_offsets = 5
+
 # beam stopper calibrations:
 # FIXME: index by run number instead of energy
 attenuations = {
@@ -126,17 +129,18 @@ class RCDB:
 #
 class FcupTable:
     table_name = '/runcontrol/fcup'
-    def __init__(self, runmin=None, runmax=None, offset=None, offset_rms=None, atten=None, slope=906.2):
+    def __init__(self, runmin, runmax):
         self.runmin = runmin
         self.runmax = runmax
-        self.slope = slope
-        self.offset = offset
-        self.offset_rms = offset_rms
-        self.atten = atten
-        self.stops = []
-        self.energies = []
+        self.slope = 906.2
+        self.offset = None
+        self.noffsets = 0
+        self.offset_rms = None
+        self.atten = None
         self.span = None
         self.nevents = None
+        self.stops = []
+        self.energies = []
     def __str__(self):
         s = '# %s(%s) %s | %s %d-%d\n'%(os.path.basename(__file__),version,' '.join(sys.argv[1:]),timestamp,self.runmin,self.runmax)
         return s + '0 0 0 %.2f %.2f %.5f'%(self.slope, self.offset, self.atten)
@@ -178,11 +182,11 @@ class FcupTable:
             print('ERROR:  found multiple beam energies for %d:  %s'%(self.runmin,' '.join([str(x) for x in self.energies])))
         if len(self.stops) > 1:
             print('ERROR:  found multiple beam stopper positions for %d:  %s'%(self.runmin,' '.join([str(x) for x in self.stops])))
-        if self.noffsets < 5:
+        if self.noffsets < minimum_offsets:
             print('ERROR:  only %d points found for fcup offset for %d-%d.'%(self.noffsets,self.runmin,self.runmax))
-        elif self.noffsets < 10:
-            print('WARNING:  only %d points found for fcup offset for %d-%d.'%(self.noffsets,self.runmin,self.runmax))
     def ignore(self, min_events=-1, min_minutes=-1):
+        if self.span is None and self.nevents is None:
+            return True
         if min_minutes>0 and self.minutes() is not None and self.minutes()<min_minutes:
             return True
         if min_events>0 and self.nevents is not None and self.nevents<min_events:
@@ -226,10 +230,16 @@ def get_mya(pv, alias, args):
 # Calculate Faraday cup offset, collect energy/stopper values:
 #
 def analyze(df, runmin, runmax, args):
+    ret = FcupTable(runmin, runmax)
+    ret.energies = list(set(list(df[df.energy.notnull()].energy)))
+    ret.stops = list(set(list(df[df.stop.notnull()].stop)))
+    if len(ret.energies) > 1 or len(ret.stops) > 1:
+        return ret
     start_time = None
     offsets,fcups = [],[]
     if args.v>2:
         print(df.to_string())
+    start = time.perf_counter()
     for x in df.iterrows():
         if start_time is not None:
             if not math.isnan(x[1].fcup) and x[1].fcup<fcup_maximum_offset:
@@ -252,20 +262,20 @@ def analyze(df, runmin, runmax, args):
     # allow single-sided veto at end of run:
     if start_time is not None:
         offsets.extend([x[1] for x in fcups])
-    ret = FcupTable(runmin, runmax)
     ret.noffsets = len(offsets)
-    ret.energies = list(set(list(df[df.energy.notnull()].energy)))
-    ret.stops = list(set(list(df[df.stop.notnull()].stop)))
     for i in range(len(ret.stops)-1,0,-1):
         if math.fabs(ret.stops[i]-ret.stops[i-1]) < stopper_deadband:
             ret.stops.pop(i)
     ret.nevents = args.db.get_event_count(runmin)
-    if len(offsets) > 0:
+    if len(offsets) >= minimum_offsets:
         import functools
-        if args.v>1:
-            print('Offsets:  '+' '.join([str(x) for x in offsets]))
         ret.offset = functools.reduce(lambda x,y: x+y, offsets) / len(offsets)
         ret.offset_rms = math.sqrt(sum([ math.pow(x-ret.offset,2) for x in offsets]) / len(offsets))
+        if args.v > 0:
+            if args.v>1:
+                print('Offsets:  '+' '.join([str(x) for x in offsets]))
+            print('Analyzing data took %.1f seconds.'%(time.perf_counter()-start))
+            print('Found %d fcup offset points with an average of %s.'%(ret.noffsets,str(ret.offset)))
     return ret
 
 #
@@ -274,12 +284,14 @@ def analyze(df, runmin, runmax, args):
 def process(args, runmin, runmax):
     ret = FcupTable(runmin, runmax)
     span = args.db.get_time_span(runmin, runmax, args.R)
+    if span is None:
+        return ret
     ret.span = span
     args.start = span[0].strftime('%Y-%m-%dT%H:%M:%S')
     args.end = span[1].strftime('%Y-%m-%dT%H:%M:%S')
     dfs = []
     if args.v>1:
-        print('Using Mya date range:  %s (%d) -> %s (%d)'%(args.start,runmin,args.start,runmax))
+        print('Using Mya date range:  %s (%d) -> %s (%d)'%(args.start,runmin,args.end,runmax))
     import concurrent.futures
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
@@ -302,16 +314,12 @@ def process(args, runmin, runmax):
         print('Analyzing data ...')
         if args.v>1:
             print(df)
-    start = time.perf_counter()
     ret = analyze(df, runmin, runmax, args)
     ret.span = span
     ret.set_atten()
     ret.check()
-    if args.v>0:
-        print('Analyzing data took %.1f seconds.'%(time.perf_counter()-start))
-        print('Found %d fcup offset points with an average of %s.'%(ret.noffsets,str(ret.offset)))
-        if ret.good():
-            print(ret)
+    if args.v>1 and ret.good():
+        print(ret)
     return ret
 
 #
