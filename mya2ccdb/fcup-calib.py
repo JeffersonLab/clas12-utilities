@@ -142,7 +142,7 @@ class FcupTable:
         self.stops = []
         self.energies = []
     def __str__(self):
-        s = '# %s(%s) %s | %s %d-%d\n'%(os.path.basename(__file__),version,' '.join(sys.argv[1:]),timestamp,self.runmin,self.runmax)
+        s = '# %s(%s) %s [%s] [%d-%d]\n'%(os.path.basename(__file__),version,' '.join(sys.argv[1:]),timestamp,self.runmin,self.runmax)
         return s + '0 0 0 %.2f %.2f %.5f'%(self.slope, self.offset, self.atten)
     def pretty_minutes(self):
         if self.minutes() is not None:
