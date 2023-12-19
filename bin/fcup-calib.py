@@ -98,7 +98,7 @@ class RCDB:
             c = self.get_condition(r, ['run_start_time','run_end_time'][i%2])
             if c is not None:
                 return c
-            if i%2 == 0:
+            if i%2 == 0 and i<expand:
                 print('WARNING:  using time from %d\'s previous run'%int(r))
                 r = self.db.get_prev_run(r)
         return None
