@@ -176,7 +176,7 @@ class FcupTable:
                     if math.fabs(e-self.energies[0]) < energy_tolerance_MeV:
                         self.atten = a
                         return
-                print('ERROR:  Unknown beam energy:  %.2f'%self.energies[0])
+                print('ERROR:  Unknown beam energy:  %.2f for run %s'%(self.energies[0],str(self.runmin)))
     def check(self):
         if len(self.energies) > 1:
             print('ERROR:  found multiple beam energies for %d:  %s'%(self.runmin,' '.join([str(x) for x in self.energies])))
