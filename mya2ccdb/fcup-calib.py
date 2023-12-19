@@ -347,7 +347,7 @@ def plot(path):
 def closeout(runs, args):
     sep = '\n'+':'*40
     ngood = len(list(filter(lambda x : x[1].good(), runs)))
-    nignore = len(list(filter(lambda x : x[1].ignore(args.N,args.M), runs)))
+    nignore = len(list(filter(lambda x : x[1].ignore(args.N,args.M) and not x[1].good(), runs)))
     nbad = len(list(filter(lambda x : not x[1].ignore(args.N,args.M) and not x[1].good(), runs)))
     if ngood > 0:
         print(sep+'\n: Runs Calibrated (%d)'%ngood+sep)
@@ -358,7 +358,7 @@ def closeout(runs, args):
             print('2. cd %s\n3. chmod +x upload\n4. ./upload'%out_dir)
     if nignore > 0:
         print(sep+'\n: Runs Ignored (%d)'%nignore+sep)
-        for r in filter(lambda x : x[1].ignore(args.N,args.M), runs):
+        for r in filter(lambda x : x[1].ignore(args.N,args.M) and not x[1].good(), runs):
             print(r[0],'[%s minutes, %s events]'%(r[1].pretty_minutes(),str(args.db.pretty_event_count(r[0]))),
                 'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
     if nbad > 0:
@@ -392,7 +392,7 @@ if __name__ == '__main__':
     cli.add_argument('-d', help='dry run, no output files', default=False, action='store_true')
     cli.add_argument('-v', help='increase verbosity', default=0, action='count')
     cli.add_argument('-g', help='graphics mode (optionally, specify path to previously generated view file)', metavar='path', default=False, const=True, nargs='?')
-    cli.add_argument('-R', help='ignore missing times in RCDB (use beginning/end of next/previous run instead, when necesary)', default=0, const=1, action='store_const')
+    cli.add_argument('-R', help='ignore missing times in RCDB and use beginning/end of next/previous run instead', default=0, const=1, action='store_const')
     cli.add_argument('-N', help='ignore runs with fewer events than this', metavar='events', default=-1, type=int)
     cli.add_argument('-M', help='ignore runs lasting fewer minutes than this', metavar='minutes', default=-1, type=float)
     cli.add_argument('-m', help='Mya deployment (default=ops)', default='ops', choices=['ops','history'])
