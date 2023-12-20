@@ -3,34 +3,34 @@ import os
 import sys
 import math
 import time
-import argparse
 import datetime
+
+# FIXME:  too much noise from sqlalchemy to use logging module
 
 version = 'v1.0'
 timestamp = datetime.datetime.now().strftime('%y/%m/%d %H:%M:%S')
-out_dir = './fcup-calib_%s'%timestamp.replace(' ','_').replace('/','-')
 pv_names = {'scalerS2b':'fcup','beam_stop':'stop','IPM2C21A':'bpm','MBSY2C_energy':'energy'}
 
-# beam current veto parameters:
+# Beam current veto parameters:
 bpm_veto_nA = 0.1
 bpm_veto_seconds = [5.0,10.0]
 
-# tolerance for choosing stopper attenuation:
+# Tolerance for choosing stopper attenuation:
 energy_tolerance_MeV = 10.0
 
-# position threshold for beam stopper in/out: 
+# Position threshold for beam stopper in/out: 
 stopper_threshold = 10.0
 
-# tolerance for stopper changes:
+# Tolerance for stopper changes:
 stopper_deadband = 1.0
 
-# ignore any readings above this:
+# Ignore any readings above this:
 fcup_maximum_offset = 2000
 
-# minimum number of offset readings required:
+# Minimum number of offset readings required:
 minimum_offsets = 5
 
-# beam stopper calibrations:
+# Beam stopper attenuation:
 # FIXME: index by run number instead of energy
 attenuations = {
     10604 : 9.8088,
@@ -78,7 +78,7 @@ class RCDB:
             self.db = rcdb.RCDBProvider(self.url)
             self.db.get_condition_types()
         except (AttributeError,sqlalchemy.exc.ArgumentError,sqlalchemy.exc.OperationalError):
-            print('Could not connect to RCDB at '+self.url)
+            print('ERROR:    Could not connect to RCDB at '+self.url)
             sys.exit(1)
     def get_condition(self, run, name):
         try:
@@ -88,33 +88,32 @@ class RCDB:
     def pretty_event_count(self, run):
         n = self.get_condition(run, 'event_count')
         if n is not None:
-            return '%4.1e'%n
-        return '  ? '
-    def get_event_count(self, run):
-        return self.get_condition(run, 'event_count')
-    def get_start_time(self, run, expand=0):
+            return '%7.1e'%n
+        return '    ?  '
+    def get_start_time(self, run, expand):
         r = int(run)
         for i in range(expand+1):
             c = self.get_condition(r, ['run_start_time','run_end_time'][i%2])
             if c is not None:
                 return c
             if i%2 == 0 and i<expand:
-                print('WARNING:  using time from %d\'s previous run'%int(r))
-                r = self.db.get_prev_run(r)
+                print('WARNING:  Using time from %d\'s previous run'%int(r))
+                r = self.db.get_prev_run(r).number
         return None
-    def get_end_time(self, run, expand=0):
+    def get_end_time(self, run, expand):
         r = int(run)
         for i in range(expand+1):
             c = self.get_condition(r, ['run_end_time','run_start_time'][i%2])
             if c is not None:
                 return c
-            if i%2 == 0:
-                print('WARNING:  using time from %d\'s next run'%int(r))
-                r = self.db.get_next_run(r)
+            if i%2 == 0 and i<expand:
+                print('WARNING:  Using time from %d\'s next run'%int(r))
+                r = self.db.get_next_run(r).number
         return None
     def get_time_span(self, first_run, last_run, expand=0):
-        start = self.get_start_time(first_run, expand=expand)
-        end = self.get_end_time(last_run, expand=expand)
+        start = self.get_start_time(first_run, expand)
+        end = self.get_end_time(last_run, expand)
+        print(start,end)
         if start is None or end is None:
             return None
         return start,end
@@ -125,10 +124,9 @@ class RCDB:
             pass
 
 #
-# Convenience class for CCDB table and storing results:
+# Convenience class for storing calibration results:
 #
-class FcupTable:
-    table_name = '/runcontrol/fcup'
+class FcupCalib:
     def __init__(self, runmin, runmax):
         self.runmin = runmin
         self.runmax = runmax
@@ -141,26 +139,10 @@ class FcupTable:
         self.nevents = None
         self.stops = []
         self.energies = []
-    def __str__(self):
-        s = '# %s(%s) %s [rms=%.1f] [%s] [%d-%d]\n'%(os.path.basename(__file__),version,' '.join(sys.argv[1:]),self.offset_rms,timestamp,self.runmin,self.runmax)
-        return s + '0 0 0 %.2f %.2f %.5f'%(self.slope, self.offset, self.atten)
-    def pretty_minutes(self):
-        if self.minutes() is not None:
-            return '%5.1f' % self.minutes()
-        else:
-            return '  ?  '
     def minutes(self):
         if self.span is not None:
             return (self.span[1]-self.span[0]).seconds/60
         return None
-    def pretty(self):
-        return 'slope=%6.1f atten=%8.5f offset=%6.1f+/-%.1f'%(self.slope, self.atten, self.offset, self.offset_rms)
-    def save(self):
-        self.filename = '%s/fcup-%d-%d.txt'%(out_dir,self.runmin,self.runmax)
-        with open(self.filename,'w') as f:
-            f.write(str(self))
-    def get_cmd(self):
-        return 'ccdb -c $CCDB_CONNECTION add -r %d-%d %s'%(self.runmin,self.runmax,os.path.basename(self.filename))
     def set_atten(self):
         if len(self.stops)>0 and len(self.energies)>0:
             if self.stops[0] < stopper_threshold:
@@ -176,14 +158,14 @@ class FcupTable:
                     if math.fabs(e-self.energies[0]) < energy_tolerance_MeV:
                         self.atten = a
                         return
-                print('ERROR:  Unknown beam energy:  %.2f for run %s'%(self.energies[0],str(self.runmin)))
+                print('ERROR:    Unknown beam energy:  %.2f for run %s'%(self.energies[0],str(self.runmin)))
     def check(self):
         if len(self.energies) > 1:
-            print('ERROR:  found multiple beam energies for %d:  %s'%(self.runmin,' '.join([str(x) for x in self.energies])))
+            print('ERROR:    Found multiple beam energies for %d:  %s'%(self.runmin,' '.join([str(x) for x in self.energies])))
         if len(self.stops) > 1:
-            print('ERROR:  found multiple beam stopper positions for %d:  %s'%(self.runmin,' '.join([str(x) for x in self.stops])))
+            print('ERROR:    Found multiple beam stopper positions for %d:  %s'%(self.runmin,' '.join([str(x) for x in self.stops])))
         if self.noffsets < minimum_offsets:
-            print('ERROR:  only %d points found for fcup offset for %d-%d.'%(self.noffsets,self.runmin,self.runmax))
+            print('WARNING:  Only %d points found for fcup offset for %d-%d.'%(self.noffsets,self.runmin,self.runmax))
     def ignore(self, min_events=-1, min_minutes=-1):
         if self.span is None and self.nevents is None:
             return True
@@ -193,9 +175,34 @@ class FcupTable:
             return True
         return False
     def fatal(self):
-        return len(self.stops)>1 or len(self.energies)>1
+        return len(self.stops)>1 or len(self.energies)>1 or self.atten is None
     def good(self):
-        return self.offset is not None and self.atten is not None and not self.fatal()
+        return not self.fatal() and self.offset is not None and self.atten is not None
+
+#
+# Convenience class for CCDB table:
+#
+class FcupTable(FcupCalib):
+    table_name = '/runcontrol/fcup'
+    def __init__(self, runmin, runmax):
+        super().__init__(runmin, runmax)
+        self.mother = None
+    def __str__(self):
+        s = '# %s(%s)'%(os.path.basename(__file__),version)
+        return s + '0 0 0 %.2f %.2f %.5f'%(self.slope, self.offset, self.atten)
+    def pretty_minutes(self):
+        if self.minutes() is not None:
+            return '%5.1f' % self.minutes()
+        else:
+            return '  ?  '
+    def pretty(self):
+        return 'slope=%6.1f atten=%8.5f offset=%6.1f+/-%.1f'%(self.slope, self.atten, self.offset, self.offset_rms)
+    def save(self, out_dir):
+        self.filename = '%s/fcup-%d-%d.txt'%(out_dir,self.runmin,self.runmax)
+        with open(self.filename,'w') as f:
+            f.write(str(self))
+    def cmd(self):
+        return 'ccdb -c $CCDB_CONNECTION add %s -r %d-%d %s'%(FcupTable.table_name,self.runmin,self.runmax,os.path.basename(self.filename))
 
 #
 # Retrieve Mya data for one PV and return a pandas dataframe:
@@ -204,7 +211,7 @@ def get_mya(pv, alias, args):
     url = 'https://epicsweb.jlab.org/myquery/interval?p=1&a=1&d=1'
     url += '&c=%s&m=%s&b=%s&e=%s'%(pv,args.m,args.start,args.end)
     if args.v>2:
-        print(url)
+        print('INFO:     ',url)
     import requests
     from requests.adapters import HTTPAdapter,Retry
     import pandas
@@ -217,7 +224,7 @@ def get_mya(pv, alias, args):
     df = pandas.DataFrame(result.json().get('data'))
     df.rename(columns={'d':'t', 'v':alias}, inplace=True)
     if args.v>0:
-        print('Got %d points from Mya for %s in %.1f seconds.'
+        print('INFO:     Got %d points from Mya for %s in %.1f seconds.'
             %(len(df.index), pv, time.perf_counter()-start))
         if args.v>3:
             with pandas.option_context('display.max_rows', None):
@@ -227,77 +234,84 @@ def get_mya(pv, alias, args):
     return df
 
 #
-# Calculate Faraday cup offset, collect energy/stopper values:
+# Apply BPM veto, return Faraday cup offset readings:
 #
-def analyze(df, runmin, runmax, args):
-    ret = FcupTable(runmin, runmax)
-    ret.energies = list(set(list(df[df.energy.notnull()].energy)))
-    ret.stops = list(set(list(df[df.stop.notnull()].stop)))
-    if len(ret.energies) > 1 or len(ret.stops) > 1:
-        return ret
-    start_time = None
-    offsets,fcups = [],[]
-    if args.v>2:
-        print(df.to_string())
-    start = time.perf_counter()
+def get_offsets(df):
+    start_time,offsets,fcups = None,[],[]
     for x in df.iterrows():
         if start_time is not None:
             if not math.isnan(x[1].fcup) and x[1].fcup<fcup_maximum_offset:
-                # early time veto:
+                # Early time veto:
                 if x[1].t > start_time + 1000*bpm_veto_seconds[0]:
                     fcups.append((x[1].t, x[1].fcup))
         if not math.isnan(x[1].bpm):
             if x[1].bpm < bpm_veto_nA:
-                # start the time window:
+                # Start the time window:
                 if start_time is None:
                     start_time = x[1].t
                     fcups = []
             elif start_time is not None:
-                # end the time window:
+                # End the time window:
                 start_time = None
                 for k,v in fcups:
-                    # late time veto:
+                    # Late time veto:
                     if k < x[1].t - 1000*bpm_veto_seconds[1]:
                         offsets.append(v)
-    # allow single-sided veto at end of run:
+    # Allow single-sided veto at end of run:
     if start_time is not None:
         offsets.extend([x[1] for x in fcups])
-    ret.noffsets = len(offsets)
+    return offsets
+
+#
+# Calculate calibration parameters, return an FcupTable:
+#
+def analyze(df, runmin, runmax, args):
+    ret = FcupTable(runmin, runmax)
+    # Store lists of non-null uniques:
+    ret.energies = list(set(list(df[df.energy.notnull()].energy)))
+    ret.stops = list(set(list(df[df.stop.notnull()].stop)))
+    # Remove stopper positions within the deadband:
     for i in range(len(ret.stops)-1,0,-1):
         if math.fabs(ret.stops[i]-ret.stops[i-1]) < stopper_deadband:
             ret.stops.pop(i)
-    ret.nevents = args.db.get_event_count(runmin)
+    # Fatal issues, multiple energy/stopper values, abort:
+    #if len(ret.energies) > 1 or len(ret.stops) > 1:
+    #    return ret
+    # Calculate the average offset and its RMS:
+    offsets = get_offsets(df)
+    ret.noffsets = len(offsets)
+    if args.v>1 and len(offsets)>0:
+        print('INFO:     Offsets:  '+' '.join([str(x) for x in offsets]))
     if len(offsets) >= minimum_offsets:
         import functools
         ret.offset = functools.reduce(lambda x,y: x+y, offsets) / len(offsets)
         ret.offset_rms = math.sqrt(sum([ math.pow(x-ret.offset,2) for x in offsets]) / len(offsets))
-        if args.v > 0:
-            if args.v>1:
-                print('Offsets:  '+' '.join([str(x) for x in offsets]))
-            print('Analyzing data took %.1f seconds.'%(time.perf_counter()-start))
-            print('Found %d fcup offset points with an average of %s.'%(ret.noffsets,str(ret.offset)))
+    # Determine stopper attenuation and others:
+    ret.set_atten()
+    ret.nevents = args.db.get_condition(runmin,'event_count')
+    ret.check()
     return ret
 
 #
-# Spawn a Mya query for each PV, return analyzed FcupTable:
+# Spawn a Mya query for each PV, analyze it, and return an FcupTable:
 #
 def process(args, runmin, runmax):
-    ret = FcupTable(runmin, runmax)
+    # Determine time span for Mya queries:
     span = args.db.get_time_span(runmin, runmax, args.R)
     if span is None:
-        return ret
-    ret.span = span
+        return FcupTable(runmin,runmax)
     args.start = span[0].strftime('%Y-%m-%dT%H:%M:%S')
     args.end = span[1].strftime('%Y-%m-%dT%H:%M:%S')
+    if args.v>0:
+        print('INFO:     Using Mya date range:  %s (%d) -> %s (%d)'%(args.start,runmin,args.end,runmax))
+    # Spawn one thread per Mya query:
     dfs = []
-    if args.v>1:
-        print('Using Mya date range:  %s (%d) -> %s (%d)'%(args.start,runmin,args.end,runmax))
     import concurrent.futures
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
         for pv,alias in pv_names.items():
-            if args.v>0:
-                print('Reading %s from Mya ...'%pv)
+            if args.v>1:
+                print('INFO:     Reading %s from Mya ...'%pv)
             futures.append(executor.submit(get_mya,pv,alias,args))
         for f in futures:
             concurrent.futures.wait([f])
@@ -306,122 +320,164 @@ def process(args, runmin, runmax):
                 sys.exit(222)
             dfs.append(f.result())
     if max([ len(x.index) for x in dfs]) <= 2:
-        print('ERROR:  no data found for %d-%d.'%(runmin,runmax))
-        return ret
+        print('ERROR:    no data found for %d-%d.'%(runmin,runmax))
+        return FcupTable(runmin,runmax)
+    # Merge results into one dataframe and analyze it:
+    start = time.perf_counter()
     import pandas
     df = pandas.concat(dfs).sort_values('t')
     if args.v>0:
-        print('Analyzing data ...')
-        if args.v>1:
+        if args.v>2:
+            print(df.to_string())
+        elif args.v>1:
             print(df)
     ret = analyze(df, runmin, runmax, args)
     ret.span = span
-    ret.set_atten()
-    ret.check()
-    if args.v>1 and ret.good():
-        print(ret)
+    if args.v > 0:
+        print('INFO:     Analyzing data for %s-%s took %.1f seconds.'%(str(runmin),str(runmax),time.perf_counter()-start))
+        if ret.offset is not None:
+            print('INFO:     Found %d fcup offset points with an average of %s.'%(ret.noffsets,str(ret.offset)))
+        if args.v > 1 and ret.good():
+            print(ret)
     return ret
 
 #
 # Plot stuff from the generated "view" file:
 #
 def plot(path):
-    import pandas as pd
-    data = pd.read_csv(path,sep='\s+',header=None)
-    data = pd.DataFrame(data)
-    import matplotlib.pyplot as plt
-    fig, (ax1,ax2) = plt.subplots(1,2)
-    fig.suptitle('Faraday Cup Calibrations')
-    ax1.set_xlabel('Run Number')
-    ax2.set_xlabel('Run Number')
-    ax1.set_ylabel('Faraday Cup Offset  (Hz)')
-    ax2.set_ylabel('Faraday Cup Attenuation')
-    ax1.errorbar(data[0], data[2], yerr=data[3], fmt='r',marker='.',linestyle='')
-    ax2.plot(data[0], data[4],'r',marker='.',linestyle='')
-    print('Close plot window to quit.')
-    plt.show()
+    try:
+        import pandas as pd
+        data = pd.read_csv(path,sep='\s+',header=None)
+        data = pd.DataFrame(data)
+        import matplotlib.pyplot as plt
+        fig, (ax1,ax2) = plt.subplots(1,2)
+        fig.suptitle('Faraday Cup Calibrations')
+        ax1.set_xlabel('Run Number')
+        ax2.set_xlabel('Run Number')
+        ax1.set_ylabel('Faraday Cup Offset  (Hz)')
+        ax2.set_ylabel('Faraday Cup Attenuation')
+        x = [ (row[1][1]+row[1][0])/2 for row in data.iterrows() ]
+        ex = [ (row[1][1]-row[1][0])/2+0.5 for row in data.iterrows() ]
+        ax1.errorbar(x, data[3], yerr=data[4], xerr=ex, fmt='r',marker='.',linestyle='')
+        ax2.plot(x, data[5],'r',marker='.',linestyle='')
+        print('Close plot window to quit.')
+        plt.show()
+    except (TypeError,IsADirectoryError,pd.errors.ParserError) as e:
+        print(e,'\nInvalid view file:  '+path)
 
 #
-# Print information, save tables for uploading to CCDB, generate "view" file:
+# For runs with insufficient measurements, try to inherit from a neighboring run:
+# If a fatal run is transversed, abort and do not inherit anything.
+#
+def merge_runs(runs, expand):
+    for i,(run,data) in enumerate(runs):
+        run = int(run)
+        if not data.fatal() and data.noffsets < minimum_offsets:
+            fatal = {-1:False,1:False}
+            for j in range(1,expand+1):
+                if not fatal[-1] and i-j >= 0 and run-int(runs[i-1][0]) <= expand:
+                    if runs[i-j][1].good():
+                        runs[i-j][1].runmax = max(runs[i-j][1].runmax,run)
+                        data.mother = runs[i-j][0]
+                        break
+                    elif runs[i-j][1].fatal():
+                        fatal[-1] = True
+                if not fatal[1] and i+j < len(runs) and int(runs[i+1][0])-run <= expand:
+                    if runs[i+j][1].good():
+                        runs[i+j][1].runmin = min(runs[i+j][1].runmin,run)
+                        data.mother = runs[i+j][0]
+                        break
+                    elif runs[i+j][1].fatal():
+                        fatal[1] = True
+
+#
+# Print a bunch of info, save tables for uploading to CCDB, generate "view" file:
 #
 def closeout(runs, args):
     sep = '\n'+':'*40
-    ngood = len(list(filter(lambda x : x[1].good(), runs)))
-    nignore = len(list(filter(lambda x : x[1].ignore(args.N,args.M) and not x[1].good(), runs)))
-    nbad = len(list(filter(lambda x : not x[1].ignore(args.N,args.M) and not x[1].good(), runs)))
-    if ngood > 0:
-        print(sep+'\n: Runs Calibrated (%d)'%ngood+sep)
-        [ print(r[0],':',r[1].pretty()) for r in filter(lambda x : x[1].good(), runs) ]
+    good =   list(filter(lambda x : x[1].good(), runs))
+    bad =    list(filter(lambda x : not x[1].ignore(args.N,args.M) and not x[1].good() and not x[1].mother, runs))
+    ignore = list(filter(lambda x : x[1].ignore(args.N,args.M) and not x[1].good() and not x[1].mother, runs))
+    inherit = list(filter(lambda x : x[1].mother, runs))
+    if len(inherit) > 0:
+        print(sep+'\n: Runs Inheriting (%d)'%len(inherit)+sep)
+        [ print(r[0],' <--- ',r[1].mother) for r in inherit ]
+    if len(good) > 0:
+        print(sep+'\n: Runs Calibrated (%d)'%len(good)+sep)
+        [ print(r[0],':',r[1].pretty()) for r in good ]
         if not args.d:
             print(sep+'\n: To Upload'+sep)
             print('1. set CCDB_CONNECTION for clas12writer')
-            print('2. cd %s\n3. chmod +x upload\n4. ./upload'%out_dir)
-    if nignore > 0:
-        print(sep+'\n: Runs Ignored (%d)'%nignore+sep)
-        for r in filter(lambda x : x[1].ignore(args.N,args.M) and not x[1].good(), runs):
+            print('2. cd %s\n3. chmod +x upload\n4. ./upload'%args.o)
+    if len(ignore) > 0:
+        print(sep+'\n: Runs Ignored (%d)'%len(ignore)+sep)
+        for r in ignore:
             print(r[0],'[%s minutes, %s events]'%(r[1].pretty_minutes(),str(args.db.pretty_event_count(r[0]))),
                 'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
-    if nbad > 0:
-        print(sep+'\n: Runs with Errors (%d)'%nbad+sep)
-        for r in filter(lambda x : not x[1].ignore(args.N,args.M) and not x[1].good(), runs):
+    if len(bad) > 0:
+        print(sep+'\n: Runs with Errors (%d)'%len(bad)+sep)
+        for r in bad:
             print(r[0],'[%s minutes, %s events, %d stops, %d energies]'%(r[1].pretty_minutes(),str(args.db.pretty_event_count(r[0])),len(r[1].stops),len(r[1].energies)),
                 'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
     if not args.d:
         print('\nLogs saved to '+tee.name)
-        if ngood > 0:
-            os.makedirs(out_dir)
-            # write the CCDB tables and script:
-            with open('%s/upload'%out_dir,'w') as f:
-                for run in filter(lambda x : x[1].good(), runs):
-                    run[1].save()
-                    f.write(run[1].get_cmd()+'\n')
-            # write the view data file:
-            with open('%s/view'%out_dir,'w') as f:
-                for run in filter(lambda x : x[1].good(), runs):
-                    f.write('%d %.2f %.2f %.2f %.5f\n'%(run[1].runmin,run[1].slope,run[1].offset,run[1].offset_rms,run[1].atten))
-            print('CCDB tables written to %s'%out_dir)
-            print('Table for plotting written to %s/view\n'%out_dir)
-            if args.g:
-                # plot the results:
-                plot('%s/view'%out_dir)
+        if len(good) > 0:
+            os.makedirs(args.o)
+            # Write the CCDB tables and script:
+            with open('%s/upload'%args.o,'w') as f:
+                for run in good:
+                    run[1].save(args.o)
+                    f.write(run[1].cmd()+'\n')
+            # Write the view data file:
+            with open('%s/view'%args.o,'w') as f:
+                for run in good:
+                    f.write('%d %d %.2f %.2f %.2f %.5f\n'%(run[1].runmin,run[1].runmax,run[1].slope,run[1].offset,run[1].offset_rms,run[1].atten))
+            print('CCDB tables written to %s'%args.o)
+            print('CCDB upload script written to %s/upload'%args.o)
+            print('Data for visualization written to %s/view\n'%args.o)
 
 if __name__ == '__main__':
 
+    import argparse
     cli = argparse.ArgumentParser(description='Calibrate Faraday cup offset and attenuation for CCDB.',epilog='For details, see https://clasweb.jlab.org/wiki/index.php/CLAS12_Faraday_Cup_Calibration_Procedure.  Note, after a year or two, EPICS data are moved to the Mya "history" deployment and may require using the -m option.  Example usage:  "fcup-calib.py -m history 17100,17101"') 
     cli.add_argument('runs', help='run range or list, e.g., 100-200 or 1,4,7 or 1 4 7', nargs='*')
+    cli.add_argument('-N', help='ignore runs with fewer events than this (default: 10000)', metavar='events', default=10000, type=int)
+    cli.add_argument('-M', help='ignore runs lasting fewer minutes than this (default: 5)', metavar='minutes', default=3, type=float)
+    cli.add_argument('-I', help='inherit from neighbor up to this many runs away, if insufficient data (default: 5)', metavar='runs', default=5, type=int)
+    cli.add_argument('-R', help='require valid times in RCDB (default: use start/end of next/previous run if necessary)', default=1, const=0, action='store_const')
     cli.add_argument('-d', help='dry run, no output files', default=False, action='store_true')
     cli.add_argument('-v', help='increase verbosity', default=0, action='count')
-    cli.add_argument('-g', help='graphics mode (optionally, specify path to previously generated view file)', metavar='path', default=False, const=True, nargs='?')
-    cli.add_argument('-R', help='ignore missing times in RCDB and use beginning/end of next/previous run instead', default=0, const=1, action='store_const')
-    cli.add_argument('-N', help='ignore runs with fewer events than this', metavar='events', default=-1, type=int)
-    cli.add_argument('-M', help='ignore runs lasting fewer minutes than this', metavar='minutes', default=-1, type=float)
-    cli.add_argument('-m', help='Mya deployment (default=ops)', default='ops', choices=['ops','history'])
+    cli.add_argument('-g', help='graphics mode (with optional path to previously generated view file)', metavar='path', default=False, const=True, nargs='?')
+    cli.add_argument('-m', help='Mya deployment (default: ops)', default='ops', choices=['ops','history'])
     cli.add_argument('-s', help='single calculation over all runs', default=False, action='store_true')
+    cli.add_argument('-o', help='output directory', metavar='path', default='./fcup-calib_%s'%timestamp.replace(' ','_').replace('/','-'))
     args = cli.parse_args(sys.argv[1:])
 
+    # User-supplied view file, just plot it and quit:
     if isinstance(args.g, str):
         plot(args.g)
         sys.exit(1)
-
-    if len(args.runs) == 0:
+    elif len(args.runs) == 0:
         cli.error('runs argument is required')
 
+    # Unless it's a dry-run, tee stdout/stderr to a log file:
     if not args.d:
         tee = Tee('./fcup-calib_%s.log'%timestamp.replace(' ','_').replace('/','-'),'w')
 
+    # Interpret the runs argument:
     try:
-        if args.runs[0].isdigit():
-            # it's a space-separated list of runs
+        # It's a space-separated list of runs:
+        if len(args.runs)>1 or args.runs[0].isdigit():
             args.runs = sorted([ int(x) for x in args.runs ])
             args.min = args.runs[0]
             args.max = args.runs[len(args.runs)-1]
+        # It's a comma-separated list of runs:
         elif ',' in args.runs[0]:
-            # it's a comma-separated list of runs
             args.runs = sorted([ int(x) for x in args.runs[0].split(',') ])
             args.min = args.runs[0]
             args.max = args.runs[len(args.runs)-1]
+        # It's a dash-separated run range:
         elif '-' in args.runs[0]:
-            # it's a dash-separated run range
             args.min,args.max = [int(x) for x in args.runs[0].split('-')]
             args.runs = None
             if args.max < args.min:
@@ -431,25 +487,34 @@ if __name__ == '__main__':
     except (ValueError,TypeError):
         cli.error('invalid "runs" argument:  '+str(args.runs))
 
+    # Initialize RCDB:
     import atexit
     args.db = RCDB()
     atexit.register(args.db.cleanup)
 
     runs = []
 
+    # Single calibration over inclusive, full time range:
     if args.s:
-        # single calibration over inclusive, full time range:
         runs.append(('%s-%s'%(args.min,args.max), process(args, args.min, args.max)))
+
+    # One calibration per run from user-specified list:
     elif args.runs:
-        # one calibration per run from user-specified list:
         for run in args.runs:
-            runs.append((str(run), process(args, run, run))) 
+            runs.append((str(run), process(args, run, run)))
+
+    # One calibration per run in RCDB: 
     else:
-        # one calibration per run in RCDB: 
         run = args.min
         while run <= args.max:
             runs.append((str(run), process(args, run, run)))
             run = args.db.db.get_next_run(run).number
 
+    if not args.s:
+        merge_runs(runs, args.I)
+
     closeout(runs, args)
+
+    if args.g:
+        plot('%s/view'%args.o)
 
