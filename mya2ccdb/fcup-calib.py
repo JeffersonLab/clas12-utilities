@@ -422,7 +422,6 @@ def closeout(runs, args):
     if not args.d:
         print('\nLogs saved to '+tee.name)
         if len(good) > 0:
-            os.makedirs(args.o)
             # Write the CCDB tables and script:
             with open('%s/upload'%args.o,'w') as f:
                 for run in good:
@@ -462,7 +461,8 @@ if __name__ == '__main__':
 
     # Unless it's a dry-run, tee stdout/stderr to a log file:
     if not args.d:
-        tee = Tee('./fcup-calib_%s.log'%timestamp.replace(' ','_').replace('/','-'),'w')
+        os.makedirs(args.o)
+        tee = Tee('%s/log'%args.o,'w')
 
     # Interpret the runs argument:
     try:
