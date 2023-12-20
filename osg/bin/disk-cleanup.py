@@ -9,7 +9,7 @@ import atexit
 import argparse
 import subprocess
 
-protected_dirs = [ '/osgpool/hallb/clas12/gemc' , '/volatile/clas12/osg2' ]
+protected_dirs = [ '/osgpool/hallb/clas12/gemc' , '/volatile/clas12/osg2', '/volatile/clas12/osg' ]
 default_ignores = [ '^.*\.hipo$', '^.*/job_[0-9]+/nodeScript.sh$' ]
 default_trashes = [ '.*\.root$', '.*\.evio$', '^core\.*' ]
 
