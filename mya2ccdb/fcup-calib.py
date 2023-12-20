@@ -113,7 +113,6 @@ class RCDB:
     def get_time_span(self, first_run, last_run, expand=0):
         start = self.get_start_time(first_run, expand)
         end = self.get_end_time(last_run, expand)
-        print(start,end)
         if start is None or end is None:
             return None
         return start,end
