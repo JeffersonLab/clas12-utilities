@@ -187,7 +187,7 @@ class FcupTable(FcupCalib):
         super().__init__(runmin, runmax)
         self.mother = None
     def __str__(self):
-        s = '# %s(%s)'%(os.path.basename(__file__),version)
+        s = '# %s(%s)\n'%(os.path.basename(__file__),version)
         return s + '0 0 0 %.2f %.2f %.5f'%(self.slope, self.offset, self.atten)
     def pretty_minutes(self):
         if self.minutes() is not None:
@@ -343,13 +343,13 @@ def process(args, runmin, runmax):
 #
 # Plot stuff from the generated "view" file:
 #
-def plot(path):
+def plot(path, output=None, batch=False):
     try:
         import pandas as pd
         data = pd.read_csv(path,sep='\s+',header=None)
         data = pd.DataFrame(data)
         import matplotlib.pyplot as plt
-        fig, (ax1,ax2) = plt.subplots(1,2)
+        fig, (ax1,ax2) = plt.subplots(1,2,figsize=(12,4))
         fig.suptitle('Faraday Cup Calibrations')
         ax1.set_xlabel('Run Number')
         ax2.set_xlabel('Run Number')
@@ -359,10 +359,17 @@ def plot(path):
         ex = [ (row[1][1]-row[1][0])/2+0.5 for row in data.iterrows() ]
         ax1.errorbar(x, data[3], yerr=data[4], xerr=ex, fmt='r',marker='.',linestyle='')
         ax2.plot(x, data[5],'r',marker='.',linestyle='')
-        print('Close plot window to quit.')
-        plt.show()
+        if output:
+            for x in ['pdf','png','svg']:
+                plt.savefig(output+'.'+x, format=x)
+                print('INFO:     Saved image to '+output+'.'+x)
+        if not batch:
+            print('Close plot window to quit.')
+            plt.show()
     except (TypeError,IsADirectoryError,pd.errors.ParserError) as e:
         print(e,'\nInvalid view file:  '+path)
+    except KeyboardInterrupt:
+        pass
 
 #
 # For runs with insufficient measurements, try to inherit from a neighboring run:
@@ -419,7 +426,7 @@ def closeout(runs, args):
             print(r[0],'[%s minutes, %s events, %d stops, %d energies]'%(r[1].pretty_minutes(),str(args.db.pretty_event_count(r[0])),len(r[1].stops),len(r[1].energies)),
                 'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
     if not args.d:
-        print('\nLogs saved to '+tee.name)
+        print('\nINFO:     Logs saved to '+tee.name)
         if len(good) > 0:
             # Write the CCDB tables and script:
             with open('%s/upload'%args.o,'w') as f:
@@ -430,9 +437,9 @@ def closeout(runs, args):
             with open('%s/view'%args.o,'w') as f:
                 for run in good:
                     f.write('%d %d %.2f %.2f %.2f %.5f\n'%(run[1].runmin,run[1].runmax,run[1].slope,run[1].offset,run[1].offset_rms,run[1].atten))
-            print('CCDB tables written to %s'%args.o)
-            print('CCDB upload script written to %s/upload'%args.o)
-            print('Data for visualization written to %s/view\n'%args.o)
+            print('INFO:     CCDB tables written to %s'%args.o)
+            print('INFO:     CCDB upload script written to %s/upload'%args.o)
+            print('INFO:     Data for visualization written to %s/view'%args.o)
 
 if __name__ == '__main__':
 
@@ -445,21 +452,24 @@ if __name__ == '__main__':
     cli.add_argument('-R', help='require valid times in RCDB (default: use start/end of next/previous run if necessary)', default=1, const=0, action='store_const')
     cli.add_argument('-d', help='dry run, no output files', default=False, action='store_true')
     cli.add_argument('-v', help='increase verbosity', default=0, action='count')
-    cli.add_argument('-g', help='graphics mode (with optional path to previously generated view file)', metavar='path', default=False, const=True, nargs='?')
+    cli.add_argument('-o', help='output directory', metavar='path', default='./fcup-calib_%s'%timestamp.replace(' ','_').replace('/','-'))
+    cli.add_argument('-g', help='generate images from previously generated view file', metavar='path')
+    cli.add_argument('-b', help='batch mode, no graphics', default=False, action='store_true')
     cli.add_argument('-m', help='Mya deployment (default: ops)', default='ops', choices=['ops','history'])
     cli.add_argument('-s', help='single calculation over all runs', default=False, action='store_true')
-    cli.add_argument('-o', help='output directory', metavar='path', default='./fcup-calib_%s'%timestamp.replace(' ','_').replace('/','-'))
     args = cli.parse_args(sys.argv[1:])
 
     # User-supplied view file, just plot it and quit:
     if isinstance(args.g, str):
-        plot(args.g)
+        plot(args.g, output='fcup-'+timestamp.replace(' ','_').replace('/','-'), batch=args.b)
         sys.exit(1)
     elif len(args.runs) == 0:
-        cli.error('runs argument is required')
+        cli.error('Runs argument is required')
 
     # Unless it's a dry-run, tee stdout/stderr to a log file:
     if not args.d:
+        if os.path.exists(args.o):
+            cli.error('Output directory already exists')
         os.makedirs(args.o)
         tee = Tee('%s/log'%args.o,'w')
 
@@ -480,11 +490,11 @@ if __name__ == '__main__':
             args.min,args.max = [int(x) for x in args.runs[0].split('-')]
             args.runs = None
             if args.max < args.min:
-                cli.error('max is less than min')
+                cli.error('Max is less than min')
         else:
             raise ValueError()
     except (ValueError,TypeError):
-        cli.error('invalid "runs" argument:  '+str(args.runs))
+        cli.error('Invalid "runs" argument:  '+str(args.runs))
 
     # Initialize RCDB:
     import atexit
@@ -514,6 +524,5 @@ if __name__ == '__main__':
 
     closeout(runs, args)
 
-    if args.g:
-        plot('%s/view'%args.o)
+    plot('%s/view'%args.o, output='%s/fcup'%args.o, batch=args.b)
 
