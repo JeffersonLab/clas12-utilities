@@ -215,7 +215,7 @@ def get_mya(pv, alias, args):
     from requests.adapters import HTTPAdapter,Retry
     import pandas
     requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
-    retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[500,502,503,504])
+    retries = Retry(total=10, backoff_factor=0.1, status_forcelist=[500,502,503,504])
     session = requests.Session()
     start = time.perf_counter()
     session.mount(url, HTTPAdapter(max_retries=retries))
