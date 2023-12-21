@@ -129,6 +129,7 @@ class FcupCalib:
     def __init__(self, runmin, runmax):
         self.runmin = runmin
         self.runmax = runmax
+        self.runsrc = runmin
         self.slope = 906.2
         self.offset = None
         self.noffsets = 0
@@ -202,6 +203,15 @@ class FcupTable(FcupCalib):
             f.write(str(self))
     def cmd(self):
         return 'ccdb -c $CCDB_CONNECTION add %s -r %d-%d %s'%(FcupTable.table_name,self.runmin,self.runmax,os.path.basename(self.filename))
+    def inherit(self, other):
+        if other.good() and not self.fatal():
+            if self.noffsets < minimum_offsets:
+                if self.atten == other.atten:
+                    other.runmin = min(other.runmin,self.runmin)
+                    other.runmax = max(other.runmax,self.runmax)
+                    self.mother = other
+                    return True
+        return False
 
 #
 # Retrieve Mya data for one PV and return a pandas dataframe:
@@ -366,35 +376,30 @@ def plot(path, output=None, batch=False):
         if not batch:
             print('Close plot window to quit.')
             plt.show()
-    except (TypeError,IsADirectoryError,pd.errors.ParserError) as e:
+    except (FileNotFoundError,TypeError,IsADirectoryError,pd.errors.ParserError) as e:
         print(e,'\nInvalid view file:  '+path)
     except KeyboardInterrupt:
         pass
 
 #
 # For runs with insufficient measurements, try to inherit from a neighboring run:
-# If a fatal run is transversed, abort and do not inherit anything.
+# If a fatal run is transversed, do not inherit in that direction.
 #
 def merge_runs(runs, expand):
     for i,(run,data) in enumerate(runs):
         run = int(run)
-        if not data.fatal() and data.noffsets < minimum_offsets:
-            fatal = {-1:False,1:False}
-            for j in range(1,expand+1):
-                if not fatal[-1] and i-j >= 0 and run-int(runs[i-1][0]) <= expand:
-                    if runs[i-j][1].good():
-                        runs[i-j][1].runmax = max(runs[i-j][1].runmax,run)
-                        data.mother = runs[i-j][0]
-                        break
-                    elif runs[i-j][1].fatal():
-                        fatal[-1] = True
-                if not fatal[1] and i+j < len(runs) and int(runs[i+1][0])-run <= expand:
-                    if runs[i+j][1].good():
-                        runs[i+j][1].runmin = min(runs[i+j][1].runmin,run)
-                        data.mother = runs[i+j][0]
-                        break
-                    elif runs[i+j][1].fatal():
-                        fatal[1] = True
+        fatal = {-1:False,1:False}
+        for j in range(1,expand+1):
+            if not fatal[-1] and i-j >= 0 and run-int(runs[i-1][0]) <= expand:
+                if data.inherit(runs[i-j][1]):
+                    break
+                elif runs[i-j][1].fatal():
+                    fatal[-1] = True
+            if not fatal[1] and i+j < len(runs) and int(runs[i+1][0])-run <= expand:
+                if data.inherit(runs[i+j][1]):
+                    break
+                elif runs[i+j][1].fatal():
+                    fatal[1] = True
 
 #
 # Print a bunch of info, save tables for uploading to CCDB, generate "view" file:
@@ -407,7 +412,7 @@ def closeout(runs, args):
     inherit = list(filter(lambda x : x[1].mother, runs))
     if len(inherit) > 0:
         print(sep+'\n: Runs Inheriting (%d)'%len(inherit)+sep)
-        [ print(r[0],' <--- ',r[1].mother) for r in inherit ]
+        [ print(r[0],' <--- ',r[1].mother.runsrc) for r in inherit ]
     if len(good) > 0:
         print(sep+'\n: Runs Calibrated (%d)'%len(good)+sep)
         [ print(r[0],':',r[1].pretty()) for r in good ]
@@ -423,8 +428,12 @@ def closeout(runs, args):
     if len(bad) > 0:
         print(sep+'\n: Runs with Errors (%d)'%len(bad)+sep)
         for r in bad:
-            print(r[0],'[%s minutes, %s events, %d stops, %d energies]'%(r[1].pretty_minutes(),str(args.db.pretty_event_count(r[0])),len(r[1].stops),len(r[1].energies)),
-                'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
+            if args.s:
+                print(r[0],'[%d stops, %d energies]'%(len(r[1].stops),len(r[1].energies)),
+                    'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
+            else:
+                print(r[0],'[%s minutes, %s events, %d stops, %d energies]'%(r[1].pretty_minutes(),str(args.db.pretty_event_count(r[0])),len(r[1].stops),len(r[1].energies)),
+                    'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
     if not args.d:
         print('\nINFO:     Logs saved to '+tee.name)
         if len(good) > 0:
@@ -524,5 +533,6 @@ if __name__ == '__main__':
 
     closeout(runs, args)
 
-    plot('%s/view'%args.o, output='%s/fcup'%args.o, batch=args.b)
+    if not args.s:
+        plot('%s/view'%args.o, output='%s/fcup'%args.o, batch=args.b)
 
