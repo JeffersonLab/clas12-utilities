@@ -89,7 +89,7 @@ for cid,job in condor.data.get_jobs(args):
     if job.get('wallhr') is not None:
       if float(job.get('wallhr')) > args.vacate:
         if condor.data.job_states.get(job['JobStatus']) == 'R':
-          condor.command.vacate_job(job)
+          condor.command.vacate(job)
 
   elif args.cvmfs:
     if not condor.data.check_cvmfs(job):
