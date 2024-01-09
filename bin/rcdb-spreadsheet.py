@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
-
 import sys
-import copy
-import json
 import argparse
-import rcdb
 
 class RcdbManager():
 
@@ -12,6 +8,7 @@ class RcdbManager():
   _IGNORE=['temperature','json_cnd','test']
 
   def __init__(self):
+    import rcdb
     self.data={}
     self.uri=self._URI
     self.types=None
@@ -71,6 +68,8 @@ class RcdbManager():
     return '\n'.join(csv)
 
   def __str__(self):
+    import copy
+    import json
     data=copy.deepcopy(self.data)
     for run in list(data.keys()):
       if data[run] is None:

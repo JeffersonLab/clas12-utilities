@@ -2,10 +2,6 @@
 import os
 import sys
 import argparse
-import datetime
-import difflib
-import ccdb
-import sqlalchemy
 
 cli = argparse.ArgumentParser(description='Compare two CCDB tables, printing the result in the standard \"diff\" format.',
     epilog='Example:  ccdb-diff.py -table /calibration/svt/status -r1 5000 -r2 6000')
@@ -31,6 +27,7 @@ if args.r1==args.r2 and args.v1==args.v2 and args.t1==args.t2:
     cli.error('Nothing worth comparing; the requested assignment queries are identical.')
 
 def parse_timestamp(t):
+    import datetime
     if t is None:
         return None
     try:
@@ -42,6 +39,8 @@ def parse_timestamp(t):
             cli.error('Invalid timestamp format:  '+t)
 
 def get_assignment(provider,table,run,variation,timestamp):
+    import ccdb
+    import sqlalchemy
     try:
         return provider.get_assignment(table, run, variation, timestamp)
     except ccdb.errors.TypeTableNotFound:
@@ -58,6 +57,7 @@ args.t1 = parse_timestamp(args.t1)
 args.t2 = parse_timestamp(args.t2)
 
 # retrieve the two assignemnts from CCDB:
+import ccdb
 provider = ccdb.AlchemyProvider()
 provider.connect(os.getenv('CCDB_CONNECTION'))
 a1 = get_assignment(provider, args.table, args.r1, args.v1, args.t1)
@@ -68,6 +68,7 @@ a1 = [ ' '.join(x) for x in a1.constant_set.data_table ]
 a2 = [ ' '.join(x) for x in a2.constant_set.data_table ]
 
 # finally, just print the diff:
+import difflib
 for x in difflib.unified_diff(a1,a2):
     print(x)
 
