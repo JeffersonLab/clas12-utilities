@@ -1,9 +1,0 @@
-#%Module1.0
-proc ModulesHelp { } {
-    puts stderr "This module sets up environment for clas12 QADB"
-}
-
-set version 1.0.0
-
-setenv QADB /group/clas12/packages/qadb/$version
-

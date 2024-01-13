@@ -1,7 +1,0 @@
-#%Module1.0
-
-set v 2.10
-
-setenv GRAPES /group/clas12/packages/grapes/$v
-prepend-path PATH /group/clas12/packages/grapes/$v/bin
-
