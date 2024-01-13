@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+import os
+import re
+import sys
+import argparse
+import datetime
+import atexit
+import subprocess
+
+import rcdb
+
+class MyaPv:
+  def __init__(self,name,deadband=None):
+    self.name=name
+    self.deadband=None
+    if deadband is not None:
+      self.deadband=float(deadband)
+  def getMyaDataArg(self):
+    if self.deadband is None:
+      return self.name
+    else:
+      return self.name+','+str(self.deadband)
+
+class MyaDatum:
+  def __init__(self,date,time):
+    self.date=date
+    self.time=time
+    self.pvs={}
+  def addPv(self,name,value):
+    self.pvs[name]=value
+  def getValue(self,name):
+    if name in self.pvs:
+      return self.pvs[name]
+    else:
+      return None
+  def __str__(self):
+    print(str(self.date),str(self.time),str(self.pvs))
+
+class MyaData:
+  def __init__(self,start=None,end=None):
+    self.pvs=[]
+    self.start='-1w'
+    self.end='0'
+    if start is not None:
+      self.start=str(start)
+    if end is not None:
+      self.end=str(end)
+  def addPv(self,name,deadband=None):
+    self.pvs.append(MyaPv(name,deadband))
+  def setStart(self,start):
+    self.start=str(start)
+  def setEnd(self,end):
+    self.end=str(end)
+  def get(self):
+    cmd=['myData','-b',self.start,'-e',self.end,'-i']
+    cmd.extend([pv.getMyaDataArg() for pv in self.pvs])
+    for line in subprocess.check_output(cmd).splitlines():
+      columns=line.strip().split()
+      if len(columns) == 2+len(self.pvs):
+        date,time=columns[0],columns[1]
+        md=MyaDatum(date,time)
+        for ii in range(2,len(columns)):
+          md.addPv(self.pvs[ii-2].name,columns[ii])
+        yield(md)
+
+cli = argparse.ArgumentParser(description='Extract run averages for a PV from Mya EPICS archive.')
+cli.add_argument('-start',metavar='RUN# or YYYY-MM-DD_HH:MM:SS',help='start date',type=str,required=True)
+cli.add_argument('-end',metavar='RUN# or YYYY-MM-DD_HH:MM:SS',help='end date',type=str,required=True)
+cli.add_argument('-pv',help='PV name',type=str,required=True)
+
+args=cli.parse_args(sys.argv[1:])
+
+db = None
+def get_rcdb_time(run, varname):
+  global db
+  if db is None:
+    db = rcdb.RCDBProvider('mysql://rcdb@clasdb.jlab.org/rcdb')
+  try:
+    return db.get_condition(run, varname).value.strftime('%Y-%m-%d_%H:%M:%S')
+  except:
+    cli.error('run number %d does not have a valid %s time in RCDB'%(run,varname))
+
+# use RCDB to get start/end time if args.start is an integer:
+try:
+  args.start = get_rcdb_time(int(args.start), 'run_start_time')
+  print('INFO:  assuming -start is a run number.')
+except ValueError:
+  pass
+try:
+  args.end = get_rcdb_time(int(args.end), 'run_end_time')
+  print('INFO:  assuming -end is a run number.')
+except ValueError:
+  pass
+
+# check timestamp format before calling mya:
+fmt='^\d\d\d\d-\d\d-\d\d_\d\d:\d\d:\d\d$'
+if re.match(fmt, args.start) is None:
+  cli.error('Invalid -start format (must be RUN# or YYYY-MM-DD_HH:MM:SS): '+args.start)
+if re.match(fmt, args.end) is None:
+  cli.error('Invalid -end date format (must be RUN# or YYYY-MM-DD_HH:MM:SS): '+args.end)
+
+# mya wants a space in the middle of a single argument:
+args.start = args.start.replace('_',' ')
+args.end = args.end.replace('_',' ')
+
+myaData = MyaData(args.start,args.end)
+myaData.addPv('B_DAQ:run_number')
+myaData.addPv(args.pv)
+
+runs = {}
+
+for d in myaData.get():
+  try:
+    r = int(d.getValue('B_DAQ:run_number'))
+    if r not in runs:
+      runs[r] = []
+    runs[r].append(float(d.getValue(args.pv)))
+  except:
+    pass
+
+for r,v in runs.items():
+  if len(v) > 0:
+    print('%7d %.5f'%(r,sum(v)/len(v)))
+

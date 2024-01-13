@@ -1,0 +1,4 @@
+# Dependencies
+* requests
+* pandas
+* rcdb
