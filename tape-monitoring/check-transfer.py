@@ -1,12 +1,10 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 import os
 import sys
 import glob
 import logging
 import datetime
 import argparse
-
-sys.path.append('/group/clas12/packages/rcdb/1.0/python')
 import rcdb
 
 cli = argparse.ArgumentParser(description='Check for missing data on tape for recent runs in RCDB.',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
