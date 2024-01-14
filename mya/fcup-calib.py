@@ -526,7 +526,12 @@ if __name__ == '__main__':
         run = args.min
         while run <= args.max:
             runs.append((str(run), process(args, run, run)))
-            run = args.db.db.get_next_run(run).number
+            run = args.db.db.get_next_run(run)
+            if run is None:
+                print('WARNING:  reached latest run in RCDB')
+                break
+            else:
+                run = run.number
 
     if not args.s:
         merge_runs(runs, args.I)
