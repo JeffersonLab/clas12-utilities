@@ -165,7 +165,7 @@ class FcupCalib:
         if len(self.stops) > 1:
             print('ERROR:    Found multiple beam stopper positions for %d:  %s'%(self.runmin,' '.join([str(x) for x in self.stops])))
         if self.noffsets < minimum_offsets:
-            print('WARNING:  Only %d points found for fcup offset for %d-%d.'%(self.noffsets,self.runmin,self.runmax))
+            print('ERROR:  Only %d points found for fcup offset for %d-%d.'%(self.noffsets,self.runmin,self.runmax))
     def ignore(self, min_events=-1, min_minutes=-1):
         if self.span is None and self.nevents is None:
             return True
