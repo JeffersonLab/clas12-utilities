@@ -2,9 +2,6 @@
 import os
 import sys
 import argparse
-import datetime
-import ccdb
-import sqlalchemy
 
 info='''
 Sometimes you want to know what CCDB assignments you will get for
@@ -92,6 +89,7 @@ if args.info:
 if args.max < args.min:
     cli.error('Invalid run range, min>max:  min=%d  max=%d.' % (args.min, args.max))
 
+import datetime
 if args.timestamp is not None:
     try:
         args.timestamp = datetime.datetime.strptime(args.timestamp, '%m/%d/%Y-%H:%M:%s')
@@ -100,6 +98,9 @@ if args.timestamp is not None:
             args.timestamp = datetime.datetime.strptime(args.timestamp, '%m/%d/%Y')
         except ValueError:
             cli.error('Invalid timestamp:  '+args.timestamp)
+
+import sqlalchemy
+import ccdb
 
 provider = ccdb.AlchemyProvider()
 provider.connect(os.getenv('CCDB_CONNECTION'))
