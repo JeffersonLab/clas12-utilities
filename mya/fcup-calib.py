@@ -356,6 +356,7 @@ def process(args, runmin, runmax):
 def plot(path, output=None, batch=False):
     try:
         import pandas as pd
+        import numpy
         data = pd.read_csv(path,sep='\s+',header=None)
         data = pd.DataFrame(data)
         import matplotlib.pyplot as plt
@@ -367,8 +368,8 @@ def plot(path, output=None, batch=False):
         ax2.set_ylabel('Faraday Cup Attenuation')
         x = [ (row[1][1]+row[1][0])/2 for row in data.iterrows() ]
         ex = [ (row[1][1]-row[1][0])/2+0.5 for row in data.iterrows() ]
-        ax1.errorbar(x, data[3], yerr=data[4], xerr=ex, fmt='r',marker='.',linestyle='')
-        ax2.plot(x, data[5],'r',marker='.',linestyle='')
+        ax1.errorbar(numpy.array(x), numpy.array(data[3]), yerr=numpy.array(data[4]), xerr=ex, fmt='r',marker='.',linestyle='')
+        ax2.plot(numpy.array(x), numpy.array(data[5]),'r',marker='.',linestyle='')
         if output:
             for x in ['pdf','png','svg']:
                 plt.savefig(output+'.'+x, format=x)
@@ -538,6 +539,6 @@ if __name__ == '__main__':
 
     closeout(runs, args)
 
-    if not args.s:
+    if not args.s and not args.d:
         plot('%s/view'%args.o, output='%s/fcup'%args.o, batch=args.b)
 
