@@ -89,6 +89,7 @@ if args.info:
 if args.max < args.min:
     cli.error('Invalid run range, min>max:  min=%d  max=%d.' % (args.min, args.max))
 
+import datetime
 if args.timestamp is not None:
     import datetime
     try:
@@ -99,8 +100,9 @@ if args.timestamp is not None:
         except ValueError:
             cli.error('Invalid timestamp:  '+args.timestamp)
 
-import ccdb
 import sqlalchemy
+import ccdb
+
 provider = ccdb.AlchemyProvider()
 provider.connect(os.getenv('CCDB_CONNECTION'))
 
