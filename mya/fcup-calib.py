@@ -45,6 +45,7 @@ attenuations = {
      7546 :14.89565,
      6535 :16.283,
      6423 :16.9726,
+     6394 :14.2513,
      2212 : 1.0,
 }
 
@@ -450,6 +451,8 @@ def closeout(runs, args):
             print('INFO:     CCDB tables written to %s'%args.o)
             print('INFO:     CCDB upload script written to %s/upload'%args.o)
             print('INFO:     Data for visualization written to %s/view'%args.o)
+            if not args.s:
+                plot('%s/view'%args.o, output='%s/fcup'%args.o, batch=args.b)
 
 if __name__ == '__main__':
 
@@ -538,7 +541,4 @@ if __name__ == '__main__':
         merge_runs(runs, args.I)
 
     closeout(runs, args)
-
-    if not args.s and not args.d:
-        plot('%s/view'%args.o, output='%s/fcup'%args.o, batch=args.b)
 
