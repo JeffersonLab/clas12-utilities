@@ -67,10 +67,23 @@ except ValueError:
 if column_index < 0:
     cli.error('Invalid variable name:  '+args.variable)
 
-import ROOT
-import sqlalchemy
+try:
+    import matplotlib.pyplot as plt
+    graph = []
+    fig, (ax) = plt.subplots(1,1,figsize=(6,4))
+    fig.suptitle('CCDB:  '+args.table+'.'+args.variable)
+    ax.set_xlabel('Run Number')
+    ax.set_ylabel('Value')
+    ax.ticklabel_format(style='plain')
+except ModuleNotFoundError:
+    try:
+        import ROOT
+        graph = ROOT.TGraph()
+        graph.SetLineWidth(2)
+    except ModuleNotFoundError:
+        cli.error('Could not find matplotlib nor ROOT for visualization.')
 
-graph = ROOT.TGraph()
+import sqlalchemy
 
 for run in range(args.min, args.max+1):
 
@@ -90,12 +103,18 @@ for run in range(args.min, args.max+1):
     value = get_cell(data_table, args.slco, column_index)
 
     if value is not None and value not in args.ignore:
-        graph.AddPoint(run,value)
+        if 'ROOT' in sys.modules:
+            graph.AddPoint(run,value)
+        else:
+            graph.append((run,value))
         if args.dump:
             print(run,value)
 
 if not args.batch:
-    graph.SetLineWidth(2)
-    graph.Draw()
-    input()
+    if 'ROOT' in sys.modules:
+        graph.Draw()
+        input()
+    else:
+        ax.plot(list(zip(*graph))[0],list(zip(*graph))[1], 'r', marker='.', linestyle='')
+        plt.show()
 
