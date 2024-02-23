@@ -3,10 +3,6 @@ import os
 import sys
 import argparse
 import datetime
-import ccdb
-import sqlalchemy
-
-import ROOT
 
 def get_row(table, slco):
     for row in data_table:
@@ -25,7 +21,7 @@ def get_cell(table, slco, column_index):
         return float(row[column_index])
     return None
 
-cli = argparse.ArgumentParser(description='Plot one variable from a CCDB table with 3 or 4 leading columns.')
+cli = argparse.ArgumentParser(description='Plot one variable from a CCDB table with 3 or 4 leading index columns.')
 cli.add_argument('-min', metavar='#', help='minimum run number', type=int, required=True)
 cli.add_argument('-max', metavar='#', help='maximum run number', type=int, required=True)
 cli.add_argument('-table', help='table name', type=str, required=True)
@@ -56,6 +52,7 @@ try:
 except:
     cli.error('Invalid s/l/c[/o]: '+args.slco)
 
+import ccdb
 provider = ccdb.AlchemyProvider()
 provider.connect(os.getenv('CCDB_CONNECTION'))
 
@@ -69,6 +66,9 @@ except ValueError:
     cli.error('Invalid variable name:  '+args.variable)
 if column_index < 0:
     cli.error('Invalid variable name:  '+args.variable)
+
+import ROOT
+import sqlalchemy
 
 graph = ROOT.TGraph()
 
