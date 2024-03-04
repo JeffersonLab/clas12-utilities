@@ -3,7 +3,7 @@ import os,sys
 
 free_limit = float(sys.argv[1])
 
-for d in ['/work/clas12','/work/hallb/hps']:
+for d in ['/work/clas12','/work/hallb/hps','/work/clas']:
 
   x = os.statvfs(d)
 
