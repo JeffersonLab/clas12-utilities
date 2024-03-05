@@ -15,7 +15,7 @@ touch log
 echo "STARTING ..." >> log
 date >> log
 
-for xx in rg-a rg-b rg-k rg-f rg-m rg-c users
+for xx in rg-a rg-b rg-c rg-d rg-e rg-f rg-k rg-m users
 do
     indir=$DISK
     if [ $xx == "users" ]
