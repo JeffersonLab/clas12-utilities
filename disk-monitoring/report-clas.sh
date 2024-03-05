@@ -1,6 +1,5 @@
 #!/bin/bash
-
-DISK=/w/hallb-scifs17exp/clas/
+DISK=/w/hallb-scshelf2102/clas
 OUTDIR=$HOME/disk/clas-`date +%Y%m%d`
 SCRIPTDIR=`dirname $0`
 LIMIT=30
