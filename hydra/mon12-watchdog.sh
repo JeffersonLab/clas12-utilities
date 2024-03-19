@@ -35,6 +35,7 @@ do
         run_number=$run
         echo "RESTARTING MON12 ..."
         date
+        killall -u $USER dbus-daemon 
         echo 18 | xxd -r -p | nc localhost 20002
     fi
     sleep 5
