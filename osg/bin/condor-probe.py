@@ -118,5 +118,6 @@ if args.tail is None and not args.cvmfs:
       print(condor.table.job_table)
     if (args.held or args.idle) and args.parseexit:
       print(condor.data.exit_code_summary(args))
-    print(condor.data.efficiency_summary())
+    if args.hours>0:
+      print(condor.data.efficiency_summary())
 
