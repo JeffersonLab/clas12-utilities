@@ -7,6 +7,8 @@ import datetime
 import argparse
 import rcdb
 
+ignore_runs = [20444]
+
 cli = argparse.ArgumentParser(description='Check for missing data on tape for recent runs in RCDB.',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 cli.add_argument('path', help='path on tape to search, e.g. /mss/clas12/rg-m/data')
 cli.add_argument('-e', metavar='#', help='minimum hours since run start time for existence', type=float, default=4)
@@ -64,6 +66,10 @@ while True:
   except AttributeError:
     run_end_time = None
     age_hours_end = None
+
+  if run.number in ignore_runs:
+    logger.warning('Run %d ignored due to whitelisting.'%run.number)
+    continue
 
   if event_count < args.n:
     logger.warning('Run %d ignored due to small number of events.'%run.number)
