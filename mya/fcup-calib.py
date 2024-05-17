@@ -13,7 +13,7 @@ pv_names = {'scalerS2b':'fcup','beam_stop':'stop','IPM2C21A':'bpm','MBSY2C_energ
 
 # Beam current veto parameters:
 bpm_veto_nA = 0.1
-bpm_veto_seconds = [5.0,10.0]
+bpm_veto_seconds = [10.0,10.0]
 
 # Tolerance for choosing stopper attenuation:
 energy_tolerance_MeV = 10.0
@@ -290,10 +290,13 @@ def analyze(df, runmin, runmax, args):
     # Calculate the average offset and its RMS:
     offsets = get_offsets(df)
     ret.noffsets = len(offsets)
+    import numpy as np
+    import matplotlib.pyplot as plt
     if args.v>1 and len(offsets)>0:
         print('INFO:     Offsets:  '+' '.join([str(x) for x in offsets]))
     if len(offsets) >= minimum_offsets:
         import functools
+        ret.histogram = np.histogram(offsets, bins=int((max(offsets)-min(offsets))))
         ret.offset = functools.reduce(lambda x,y: x+y, offsets) / len(offsets)
         ret.offset_rms = math.sqrt(sum([ math.pow(x-ret.offset,2) for x in offsets]) / len(offsets))
     # Determine stopper attenuation and others:
@@ -351,6 +354,19 @@ def process(args, runmin, runmax):
             print(ret)
     return ret
 
+def plot_details(runs):
+    import matplotlib.pyplot as plt
+    ncol,nrow = 4,6
+    for i,run in enumerate(good):
+        if i%(ncol*nrow) == 0:
+            fig, ax = plt.subplots(n,n)
+        if i==len(good)-1 or i%(ncol*nrow)==ncol*nrow-1:
+            plt.savefig(output
+        y = [ sum(run[1].histogram[0]) * gauss(x,run[1].offset,run[1].offset_rms) for x in run[1].histogram[1] ]
+        ax[int(i%n)][int(i/n)].hist(run[1].histogram[1][:-1], run[1].histogram[1], weights=run[1].histogram[0])
+        ax[int(i%n)][int(i/n)].plot(run[1].histogram[1], y, '-', linewidth=2)
+    plt.show()
+
 #
 # Plot stuff from the generated "view" file:
 #
@@ -403,6 +419,8 @@ def merge_runs(runs, expand):
                 elif runs[i+j][1].fatal():
                     fatal[1] = True
 
+def gauss(x,mean,sigma):
+    return 1/sigma/math.sqrt(2*math.pi)*math.exp( -math.pow((x-mean)/sigma,2)/2 )
 #
 # Print a bunch of info, save tables for uploading to CCDB, generate "view" file:
 #
@@ -436,6 +454,18 @@ def closeout(runs, args):
             else:
                 print(r[0],'[%s minutes, %s events, %d stops, %d energies]'%(r[1].pretty_minutes(),str(args.db.pretty_event_count(r[0])),len(r[1].stops),len(r[1].energies)),
                     'https://clasweb.jlab.org/rcdb/runs/info/'+r[0].split('-').pop(0))
+    if args.u:
+        import matplotlib.pyplot as plt
+        n = math.sqrt(len(good))
+        fig, axes = plt.subplots(n,n)
+        for i,run in enumerate(good):
+            if i > n*n-1:
+                break
+            y = [ sum(run[1].histogram[0]) * gauss(x,run[1].offset,run[1].offset_rms) for x in run[1].histogram[1] ]
+            axes[int(i%n)][int(i/n)].hist(run[1].histogram[1][:-1], run[1].histogram[1], weights=run[1].histogram[0])
+            axes[int(i%n)][int(i/n)].plot(run[1].histogram[1], y, '-', linewidth=2)
+        plt.show()
+
     if not args.d:
         print('\nINFO:     Logs saved to '+tee.name)
         if len(good) > 0:
@@ -470,6 +500,7 @@ if __name__ == '__main__':
     cli.add_argument('-b', help='batch mode, no graphics', default=False, action='store_true')
     cli.add_argument('-m', help='Mya deployment (default: ops)', default='ops', choices=['ops','history'])
     cli.add_argument('-s', help='single calculation over all runs', default=False, action='store_true')
+    cli.add_argument('-u', help='show histogram of offsets', default=False, action='store_true')
     args = cli.parse_args(sys.argv[1:])
 
     # User-supplied view file, just plot it and quit:
@@ -541,4 +572,7 @@ if __name__ == '__main__':
         merge_runs(runs, args.I)
 
     closeout(runs, args)
+
+    if not args.s:
+        plot_summary('%s/view'%args.o, output='%s/fcup'%args.o, batch=args.b)
 
