@@ -1,7 +1,6 @@
 #!/bin/sh
 
 # setup environment:
-top=/group/clas12/packages
 source /scigroup/cvmfs/hallb/clas12/sw/setup.sh
 module load clas12
 
