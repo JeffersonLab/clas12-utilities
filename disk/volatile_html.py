@@ -8,9 +8,12 @@ path_prefix='/volatile/clas12'
 startSeconds = time.time()
 updateTime = time.strftime('%c')
 max_rows = 1e4
-
+dodu = True
 if len(sys.argv)>1:
-  path_prefix=sys.argv[1]
+  if sys.argv[1] == '-d':
+    dodu = False
+  else:
+    path_prefix = sys.argv[len(sys.argv)-1]
 
 # setup the database connection:
 db = mysql.connector.connect(
@@ -93,19 +96,6 @@ for i in range(len(result)):
   line += '</tr>'
   queue_lines.append(line)
 
-# get top-level usage (this is the slowest part, so we limit to specific subdirs):
-# (if we could use the database to do this efficiently, that would be nice):
-top_sums = {}
-for x in 'a','b','c','f','k','m':
-  try:
-    y = subprocess.check_output(['du','-s',path_prefix+'/rg-'+x])
-    y = float(y.split().pop(0))/1024/1024/1024
-    top_sums['rg-'+x] = y
-  except:
-    pass
-fmt = '<tr><td>%s</td><td>%.1f</td></tr>'
-top_sums_lines = [ fmt%(x,top_sums[x]) for x in reversed(sorted(top_sums,key=top_sums.get)) ]
-
 # print header:
 print('<html>')
 print('<head><title>'+path_prefix+' Usage and Auto-Deletion Queue</title></head>')
@@ -114,15 +104,27 @@ print('<h1>'+path_prefix+' Usage and Auto-Deletion Queue</h1>')
 print('<p> Last Updated: %s</p>'%updateTime)
 print('<p> Update Duration: %.1f minutes</p>'%((time.time()-startSeconds)/60))
 
-# print top-level usage:
-print('<h2>Usage Summary:</h2>')
-print('<table border>')
-print('<tr>')
-print('<th>subdirectory</th>')
-print('<th>size (TB)</th>')
-print('</tr>')
-print('\n'.join(top_sums_lines))
-print('</table>')
+if dodu:
+# get top-level usage (this is the slowest part, so we limit to specific subdirs):
+# (if we could use the database to do this efficiently, that would be nice):
+  top_sums = {}
+  for x in 'a','b','c','d','e','f','k','l','m':
+    try:
+      y = subprocess.check_output(['du','-s',path_prefix+'/rg-'+x])
+      y = float(y.split().pop(0))/1024/1024/1024
+      top_sums['rg-'+x] = y
+    except:
+      pass
+  fmt = '<tr><td>%s</td><td>%.1f</td></tr>'
+  top_sums_lines = [ fmt%(x,top_sums[x]) for x in reversed(sorted(top_sums,key=top_sums.get)) ]
+  print('<h2>Usage Summary:</h2>')
+  print('<table border>')
+  rint('<tr>')
+  print('<th>subdirectory</th>')
+  print('<th>size (TB)</th>')
+  print('</tr>')
+  print('\n'.join(top_sums_lines))
+  print('</table>')
 
 # print auto-deletion queue:
 print('<h2>Auto-Deletion Queue:</h2>')
