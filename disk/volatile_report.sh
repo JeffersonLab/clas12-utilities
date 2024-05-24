@@ -5,8 +5,6 @@ SCRIPTDIR=`dirname $0`
 mkdir -p $HOME/disk
 cd $HOME/disk
 
-export PYTHONPATH=/group/clas12/packages/mysql-connector/8.0.17/lib
-
 rm -f index.html cache.html hps-volatile.html hps-cache.html
 
 $SCRIPTDIR/volatile_html.py >& index.html
