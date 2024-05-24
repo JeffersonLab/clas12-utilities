@@ -62,7 +62,8 @@ for i in range(len(result)):
   count += 1
   line_array = result[i]
   sum_gb = float(line_array[3])/1024.0/1024.0/1024.0
-  this_dir = str(line_array[4])
+  this_dir = line_array[4].decode().replace(path_prefix+'/','')
+  oldest_file = line_array[1].decode()
 
 #  was thinking to parasitically get top level usage, but this 
 #  databse query is inappropriate for that:
@@ -82,17 +83,15 @@ for i in range(len(result)):
 
   # accumulate the deletion queue, i.e. the oldest stuff:
   count_dir += 1
-  line_str_array = []
-  for j in range(len(line_array)):
-    line_str_array.append(str(line_array[j]))
+  line_str_array = [ x.decode() if type(x) is bytes else str(x) for x in line_array ]
   line = '<tr>'
   line += '<td>%d</td>'%count_dir
   line += '<td>%d</td>'%count
   line += '<td>%.3f</td>'%sum_gb
   line += '<td>%s</td>'%line_str_array[0]
   line += '<td>%s</td>'%line_str_array[2]
-  line += '<td>%s</td>'%line_str_array[4].replace(path_prefix+'/','')
-  line += '<td>%s</td>'%line_str_array[1]
+  line += '<td>%s</td>'%this_dir
+  line += '<td>%s</td>'%oldest_file
   line += '</tr>'
   queue_lines.append(line)
 
