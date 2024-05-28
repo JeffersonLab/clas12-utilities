@@ -3,10 +3,6 @@ import mysql.connector
 import time
 import sys
 
-# this uses the same mysql.connector that comes with ccdb:
-source /scigroup/cvmfs/hallb/clas12/sw/setup.sh
-module load ccdb
-
 path_prefix='/cache/clas12'
 if len(sys.argv)>1:
   path_prefix=sys.argv[1]
