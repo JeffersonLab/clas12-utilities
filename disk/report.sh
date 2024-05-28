@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# this uses the same mysql.connector that comes with ccdb:
+source /scigroup/cvmfs/hallb/clas12/sw/setup.sh
+module load ccdb
+
 DISK=/work/clas12
 OUTDIR=$HOME/disk/`date +%Y%m%d`
 SCRIPTDIR=`dirname $0`
