@@ -5,9 +5,6 @@ OUTDIR=$HOME/disk/clas-`date +%Y%m%d`
 SCRIPTDIR=`dirname $0`
 LIMIT=30
 
-# what's this for, probably perl or python?
-export PATH=/apps/bin:${PATH}
-
 mkdir -p $OUTDIR
 cd $OUTDIR
 
