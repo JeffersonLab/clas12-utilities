@@ -3,7 +3,7 @@ import mysql.connector
 import time
 import sys
 
-path_prefix='/cache/clas12'
+path_prefix='/cache/clas12/'
 if len(sys.argv)>1:
   path_prefix=sys.argv[1]
 
