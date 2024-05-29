@@ -74,7 +74,7 @@ for i in range(len(result)):
     line_str_array = []
     for j in range(len(line_array)):
       line_str_array.append(str(line_array[j]))
-    line = '<tr>' + '<td>' + str(count_dir) + '</td>' + '<td>%.1f'%sum_gb + '</td>' + '<td>' + line_str_array[4].replace(path_prefix+'/','') + '</td>' + '<td>' + str(count) + '</td>' + '<td>' + line_str_array[1] + '</td>' + '<td>' + line_str_array[0] + '</td>' + '<td>' + line_str_array[2] + '</td>' + '</tr>'
+    line = '<tr>' + '<td>' + str(count_dir) + '</td>' + '<td>%.1f'%sum_gb + '</td>' + '<td>' + line_array[4].decode().replace(path_prefix+'/','') + '</td>' + '<td>' + str(count) + '</td>' + '<td>' + line_str_array[1] + '</td>' + '<td>' + line_str_array[0] + '</td>' + '<td>' + line_str_array[2] + '</td>' + '</tr>'
     print(line)
   if sum_gb > target_size:
     break
