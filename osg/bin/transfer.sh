@@ -21,19 +21,6 @@
 # 1) The rsync version on scosg16 appears to be too old to support
 #    full wildcards in ignore/exclude arguments.
 #
-# 2) There exist things in these CLAS12 OSG job that can be cleaned
-#    up before registering in the payload, e.g. LUND and EVIO files,
-#    whose information is already in HIPO, and background files.
-#
-# 3) Identically named nodeScript.sh exists at both the submit and
-#    every job directory level, and we need to keep at least one of
-#    them for provenance until, until that info is in HIPO. 
-#
-# 4) Job numbers appear in directory names, but not those jobs'
-#    output files.  More fully-qualifed output file names (at least
-#    job number, but could consider other specs too) could
-#    facilitate automatic downsizing unnecessary directories later. 
-#
 
 ########################################################################
 # Static setup:
