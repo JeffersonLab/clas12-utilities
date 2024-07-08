@@ -8,9 +8,9 @@
 # other filesystem at JLab, which then trigger an OSG/CondorHT job *if* any changes
 # are detected.  (That job is presumably the standard mechanism supported by OSG to
 # populate /cvmfs/oasis.opensciencegrid.org, but the rsyncs may be JLab.)  That job
-# is currently a one-shot, not monitored and not retried, and with a large probability
-# of failure, then future rsyncs not triggering any more CVMFS updates for the
-# associated files until they're changed again.  Hence this silly script ...
+# is currently a one-shot, not monitored and not retried, and with a significant
+# probability of failure.  If it fails, future rsyncs will not trigger any more
+# CVMFS updates for the associated files until they're changed again.
 #
 # Note, some CVMFS attributes prevent using standard filesystem tools:
 # * sticky bit doesn't exist (it's read-only)
@@ -30,7 +30,7 @@ cli.add_argument('-s',help='source path (or subpath underneath default)',metavar
 cli.add_argument('-d',help='destination path on CVMFS',metavar='PATH',default=default_dest)
 cli.add_argument('-t',help='check timestamps',action='store_true')
 cli.add_argument('-v',help='verbose mode, repeatable',action='count',default=0)
-cli.add_argument('-i',help='regex for ignoring paths, repeatable',default=[],action=append)
+cli.add_argument('-i',help='regex for ignoring paths, repeatable',default=[],action='append')
 args = cli.parse_args()
 ignores.extend(args.i)
 
