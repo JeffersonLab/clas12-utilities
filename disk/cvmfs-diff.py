@@ -9,8 +9,12 @@
 # are detected.  (That job is presumably the standard mechanism supported by OSG to
 # populate /cvmfs/oasis.opensciencegrid.org, but the rsyncs may be JLab.)  That job
 # is currently a one-shot, not monitored and not retried, and with a significant
-# probability of failure.  If it fails, future rsyncs will not trigger any more
-# CVMFS updates for the associated files until they're changed again.
+# probability of failure.  If it fails, future rsyncs will not detect changes and
+# so will not trigger the jobs, and the source filesystem then stays permanently out
+# of sync with CVMFS until the affected files are modified again.
+#
+# Note, permissions changes do not (always?) propagate, need to remove the file, let
+# it propagate, then add it back with correct permissions.
 #
 # Note, some CVMFS attributes prevent using standard filesystem tools:
 # * sticky bit doesn't exist (it's read-only)
@@ -25,12 +29,12 @@ default_dest = '/cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw'
 ignores = ['.*/rgm_fall2021-ai.yaml$','.*/\.git/.*','.*/gibuu/.*']
 
 import argparse
-cli = argparse.ArgumentParser('cvmfs-diff',description='Compare source and destination CVMFS filesystems.',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-cli.add_argument('-s',help='source path (or subpath underneath default)',metavar='PATH',default=default_src)
-cli.add_argument('-d',help='destination path on CVMFS',metavar='PATH',default=default_dest)
-cli.add_argument('-t',help='check timestamps',action='store_true')
+cli = argparse.ArgumentParser('cvmfs-diff',description='Compare local source and CVMFS target filesystems.',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+cli.add_argument('-l',help='local source directory (or subpath underneath default)',metavar='PATH',default=default_src)
+cli.add_argument('-c',help='CVMFS target directory',metavar='PATH',default=None)
+cli.add_argument('-i',help='ignore path regex, repeatable',default=[],action='append')
 cli.add_argument('-v',help='verbose mode, repeatable',action='count',default=0)
-cli.add_argument('-i',help='regex for ignoring paths, repeatable',default=[],action='append')
+cli.add_argument('-t',help='check timestamps',action='store_true',default=False)
 args = cli.parse_args()
 ignores.extend(args.i)
 
@@ -41,17 +45,20 @@ elif args.v>0:
     logging.basicConfig(level=logging.WARNING,format='%(levelname)s: %(message)s')
 else:
     logging.basicConfig(level=logging.ERROR,format='%(levelname)s: %(message)s')
-
-import sys
+if not args.l.startswith('/'):
+    if args.c:
+        cli.error('Option -c cannot be used with a relative path for -l.')
+    args.l = default_src + '/' + args.l
+if not args.c:
+    args.c = default_dest + args.l[len(default_src):]
+elif not args.c.startswith('/'):
+    cli.error('Option -c must be an absolute path.')
 import os
-if not args.s.startswith('/'):
-    args.d = default_dest + '/' + args.s
-    args.s = default_src + '/' + args.s
-if not os.path.isdir(args.s):
-    cli.error('Source path is not a directory or does not exist:  '+args.s)
-if not os.path.isdir(args.d):
-    cli.error('Destination path is not a directory or does not exist:  '+args.d)
-if not args.d.startswith('/cvmfs/'):
+if not os.path.isdir(args.l):
+    cli.error('Source directory invalid:  '+args.l)
+if not os.path.isdir(args.c):
+    cli.error('Target directory invalid:  '+args.c)
+if not args.c.startswith('/cvmfs/'):
     logging.warning('Destination does not start with "/cvmfs".')
 
 def diff(a,b):
@@ -75,28 +82,30 @@ def diff(a,b):
     return True
 
 def ignore(path):
+    import re
     for x in ignores:
         if re.match(x,path):
             return True
     return False
 
-# walk the source filesystem, check for and store mismatches: 
-mismatches = []
-for dirpath, dirnames, filenames in os.walk(args.s):
-    import re
-    import itertools
-    for f in itertools.chain(dirnames, filenames):
-        f1 = dirpath + '/' + f
-        f2 = args.d + f1[len(args.s):]
-        if ignore(f1):
-            continue
-        if diff(f1,f2):
-            logging.getLogger().info('GOOD: %s'%f1)
-        else:
-            mismatches.append(f1)
+def walk(path):
+    for dirpath, dirnames, filenames in os.walk(path):
+        import itertools
+        for f in itertools.chain(dirnames, filenames):
+            f1 = dirpath + '/' + f
+            f2 = args.c + f1[len(args.l):]
+            if ignore(f1):
+                continue
+            if diff(f1,f2):
+                logging.getLogger().info('GOOD: %s'%f1)
+            else:
+                yield(f1)
+
+mismatches = list(walk(args.l))
 
 if len(mismatches)>0:
     logging.getLogger().error('Found %d Inconsistencies:\n'%len(mismatches)+'\n'.join(mismatches))
 
+import sys
 sys.exit(len(mismatches))
 
