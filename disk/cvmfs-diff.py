@@ -22,22 +22,31 @@
 default_src = '/scigroup/cvmfs/hallb/clas12/sw'
 default_dest = '/cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw'
 
+ignores = ['.*/rgm_fall2021-ai.yaml$','.*/\.git/.*','.*/gibuu/.*']
+
 import argparse
 cli = argparse.ArgumentParser('cvmfs-diff',description='Compare source and destination CVMFS filesystems.',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-cli.add_argument('-s',help='source path',metavar='PATH',default=default_src)
+cli.add_argument('-s',help='source path (or subpath underneath default)',metavar='PATH',default=default_src)
 cli.add_argument('-d',help='destination path on CVMFS',metavar='PATH',default=default_dest)
 cli.add_argument('-t',help='check timestamps',action='store_true')
-cli.add_argument('-v',help='verbose mode',action='store_true')
+cli.add_argument('-v',help='verbose mode, repeatable',action='count',default=0)
+cli.add_argument('-i',help='regex for ignoring paths, repeatable',default=[],action=append)
 args = cli.parse_args()
+ignores.extend(args.i)
 
 import logging
-if args.v:
-    logging.basicConfig(level=logging.WARNING,format='%(levelname)-9s: %(message)s')
+if args.v>1:
+    logging.basicConfig(level=logging.INFO,format='%(levelname)s: %(message)s')
+elif args.v>0:
+    logging.basicConfig(level=logging.WARNING,format='%(levelname)s: %(message)s')
 else:
-    logging.basicConfig(level=logging.ERROR,format='%(levelname)-9s: %(message)s')
+    logging.basicConfig(level=logging.ERROR,format='%(levelname)s: %(message)s')
 
 import sys
 import os
+if not args.s.startswith('/'):
+    args.d = default_dest + '/' + args.s
+    args.s = default_src + '/' + args.s
 if not os.path.isdir(args.s):
     cli.error('Source path is not a directory or does not exist:  '+args.s)
 if not os.path.isdir(args.d):
@@ -65,15 +74,25 @@ def diff(a,b):
         return False
     return True
 
+def ignore(path):
+    for x in ignores:
+        if re.match(x,path):
+            return True
+    return False
+
 # walk the source filesystem, check for and store mismatches: 
 mismatches = []
 for dirpath, dirnames, filenames in os.walk(args.s):
+    import re
     import itertools
     for f in itertools.chain(dirnames, filenames):
         f1 = dirpath + '/' + f
         f2 = args.d + f1[len(args.s):]
-        if f1.find('/.git/')>=0: continue
-        if not diff(f1,f2):
+        if ignore(f1):
+            continue
+        if diff(f1,f2):
+            logging.getLogger().info('GOOD: %s'%f1)
+        else:
             mismatches.append(f1)
 
 if len(mismatches)>0:
