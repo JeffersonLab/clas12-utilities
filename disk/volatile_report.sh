@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 # this uses the same mysql.connector that comes with ccdb:
 source /scigroup/cvmfs/hallb/clas12/sw/setup.sh
