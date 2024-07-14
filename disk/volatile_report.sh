@@ -1,8 +1,8 @@
 #!/bin/bash -l
 
 # this uses the same mysql.connector that comes with ccdb:
-source /scigroup/cvmfs/hallb/clas12/sw/setup.sh
-module load ccdb
+mould use /scigroup/cvmfs/hallb/clas12/sw/modulefiles
+module load -s ccdb
 
 SCRIPTDIR=`dirname $0`
 
