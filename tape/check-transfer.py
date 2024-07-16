@@ -7,8 +7,6 @@ import datetime
 import argparse
 import rcdb
 
-ignore_runs = [20444]
-
 cli = argparse.ArgumentParser(description='Check for missing data on tape for recent runs in RCDB.',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 cli.add_argument('path', help='path on tape to search, e.g. /mss/clas12/rg-m/data')
 cli.add_argument('-e', metavar='#', help='minimum hours since run start time for existence', type=float, default=4)
@@ -18,9 +16,14 @@ cli.add_argument('-f', metavar='#', help='minimum number of files per run', type
 cli.add_argument('-m', metavar='#', help='minimum run number to consider', type=int, default=0)
 cli.add_argument('-d', metavar='#', help='number of days to look back in RCDB', type=float, default=5)
 cli.add_argument('-r', metavar='URL', help='RCDB database connection string', type=str, default='mysql://rcdb@clasdb.jlab.org/rcdb')
+cli.add_argument('-i', metavar='RUN', help='run number to ignore, repeatable', type=int, default=[20444], action='append')
+cli.add_argument('-R', metavar='REGEX', help='regular expression for finding run number in directory names (default=.*(%d+)$)', type=str, default='.*(%d+)$')
 cli.add_argument('-v', help='verbose mode, else only print failures', default=False, action='store_true')
 
-args = cli.parse_args(sys.argv[1:])
+args = cli.parse_args()
+args.R = re.compile(args.R)
+print(args.R)
+sys.exit(0)
 
 if args.v:
   logging.basicConfig(level=logging.INFO,format='%(levelname)-9s: %(message)s')
@@ -34,11 +37,11 @@ if not os.path.isdir(args.path):
   sys.exit(999)
 
 cached_dirs = glob.glob(args.path+'/*')
+cached_dirs = filter(lambda d: os.path.isdir(d) , cached_dirs)
+cached_dirs = filter(lambda d: re.match(args.R, cached_dirs) , cached_dirs)
 
 db = rcdb.RCDBProvider(args.r)
-
 run = 1e9
-
 error_runs = []
 
 while True:
@@ -48,16 +51,16 @@ while True:
   try:
     try:
       run_start_time = db.get_condition(run, 'run_start_time').value
-      age_hours_start = (datetime.datetime.now() - run_start_time).total_seconds() / 60 / 60
       event_count = db.get_condition(run, 'event_count').value
       evio_files_count = db.get_condition(run, 'evio_files_count').value
+      age_hours_start = (datetime.datetime.now() - run_start_time).total_seconds() / 60 / 60
     except (AttributeError,TypeError):
-      logger.warning('Run %d ignored due to its invalid RCDB parameters.'%run.number)
+      logger.warning('Run %d ignored due to invalid RCDB parameters.'%run.number)
       continue
     if run.number < args.m:
       break
   except (AttributeError,TypeError):
-    logger.warning('Run %s ignored due to its invalid RCDB parameters.'%run)
+    logger.warning('Run %s ignored due to invalid RCDB parameters.'%run)
     continue
 
   try:
@@ -67,7 +70,7 @@ while True:
     run_end_time = None
     age_hours_end = None
 
-  if run.number in ignore_runs:
+  if run.number in args.i:
     logger.warning('Run %d ignored due to whitelisting.'%run.number)
     continue
 
