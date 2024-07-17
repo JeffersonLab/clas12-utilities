@@ -1,7 +1,6 @@
-#!/bin/sh
+#!/bin/bash -l
 
 # setup environment:
-source /etc/profile.d/modules.sh
 module use /scigroup/cvmfs/hallb/clas12/sw/modulefiles
 module load -s clas12
 

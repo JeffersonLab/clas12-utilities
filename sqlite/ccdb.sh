@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/bin/bash -l
 
 # setup environment:
-source /scigroup/cvmfs/hallb/clas12/sw/setup.sh
-module load clas12
+module use /scigroup/cvmfs/hallb/clas12/sw/modulefiles
+module load -s clas12
 
 # define snapshot paths:
 snapshotDir=/group/clas12/packages/local/share/ccdb/sqlite
