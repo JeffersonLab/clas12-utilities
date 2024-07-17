@@ -11,7 +11,7 @@ webDir=/group/clas/www/clasweb/html/clas12offline/sqlite/ccdb
 
 # generate the snapshot:
 rm -f $snapshot
-clas12-ccdb-mysql2sqlite.py $snapshot
+clas12-ccdb-mysql2sqlite.py $@ $snapshot || exit 1
 
 snapshotSize=$(stat -c%s $snapshot)
 
