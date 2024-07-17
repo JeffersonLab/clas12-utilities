@@ -1,1 +1,0 @@
-0 5 * * * /usr/bin/rsync -avz /site/staff/cebaf_staff /group/clas12/packages/staff/
