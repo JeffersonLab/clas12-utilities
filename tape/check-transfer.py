@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
-import os
-import sys
-import glob
-import logging
-import datetime
-import argparse
-import rcdb
 
+import argparse
 cli = argparse.ArgumentParser(description='Check for missing data on tape for recent runs in RCDB.',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 cli.add_argument('path', help='path on tape to search, e.g. /mss/clas12/rg-m/data')
 cli.add_argument('-e', metavar='#', help='minimum hours since run start time for existence', type=float, default=4)
@@ -15,16 +9,20 @@ cli.add_argument('-n', metavar='#', help='mininum number of events per run', typ
 cli.add_argument('-f', metavar='#', help='minimum number of files per run', type=int, default=5)
 cli.add_argument('-m', metavar='#', help='minimum run number to consider', type=int, default=0)
 cli.add_argument('-d', metavar='#', help='number of days to look back in RCDB', type=float, default=5)
-cli.add_argument('-r', metavar='URL', help='RCDB database connection string', type=str, default='mysql://rcdb@clasdb.jlab.org/rcdb')
-cli.add_argument('-i', metavar='RUN', help='run number to ignore, repeatable', type=int, default=[20444], action='append')
+cli.add_argument('-C', metavar='URL', help='RCDB database connection string', type=str, default='mysql://rcdb@clasdb.jlab.org/rcdb')
+cli.add_argument('-I', metavar='RUN', help='run number to ignore, repeatable', type=int, default=[20444], action='append')
 cli.add_argument('-R', metavar='REGEX', help='regular expression for finding run number in directory names (default=.*(%d+)$)', type=str, default='.*(%d+)$')
 cli.add_argument('-v', help='verbose mode, else only print failures', default=False, action='store_true')
 
 args = cli.parse_args()
-args.R = re.compile(args.R)
-print(args.R)
-sys.exit(0)
 
+import re
+try:
+    args.R = re.compile(args.R)
+except re.error:
+    cli.error('Invalid -R regular expression:  '+args.R)
+
+import logging
 if args.v:
   logging.basicConfig(level=logging.INFO,format='%(levelname)-9s: %(message)s')
 else:
@@ -32,14 +30,17 @@ else:
 
 logger = logging.getLogger()
 
+import os,sys
 if not os.path.isdir(args.path):
   logger.critical('Invalid path:  '+args.path)
   sys.exit(999)
 
+import glob
 cached_dirs = glob.glob(args.path+'/*')
 cached_dirs = filter(lambda d: os.path.isdir(d) , cached_dirs)
 cached_dirs = filter(lambda d: re.match(args.R, cached_dirs) , cached_dirs)
 
+import rcdb,datetime
 db = rcdb.RCDBProvider(args.r)
 run = 1e9
 error_runs = []
