@@ -4,11 +4,9 @@ import os, sys
 from subprocess import Popen, PIPE
 import argparse
 
-
 parser = argparse.ArgumentParser(description='Clone the CLAS12 CCDB MySQL Database into a local SQLite file.')
-parser.add_argument('outfile',
-    type=str, help='output file',
-    nargs='?', default='clas12.sqlite')
+parser.add_argument('outfile', type=str, help='output file', nargs='?', default='clas12.sqlite')
+parser.add_argument('-p', help='password', required=True)
 args = parser.parse_args()
 
 if os.path.exists(args.outfile):
@@ -28,7 +26,7 @@ if os.path.exists(args.outfile):
 
 cmd = r'''\
 mysqldump --skip-tz-utc --compatible=ansi --skip-extended-insert --compact  \
--uclas12writer -p'XXXXXXXXX' -hclasdb.jlab.org clas12 | \
+-uclas12writer -p'___PASSWORD___' -hclasdb.jlab.org clas12 | \
 awk '
 
 BEGIN {
@@ -114,6 +112,8 @@ END {
     print "END TRANSACTION;"
 }
 ' | sqlite3 ''' + args.outfile
+
+cmd = cmd.replace('___PASSWORD___',args.p)
 
 proc = Popen(cmd, shell=True, executable='/bin/bash')
 sys.exit(proc.wait())
