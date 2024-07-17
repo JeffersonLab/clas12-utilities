@@ -9,9 +9,9 @@ cli.add_argument('-n', metavar='#', help='mininum number of events per run', typ
 cli.add_argument('-f', metavar='#', help='minimum number of files per run', type=int, default=5)
 cli.add_argument('-m', metavar='#', help='minimum run number to consider', type=int, default=0)
 cli.add_argument('-d', metavar='#', help='number of days to look back in RCDB', type=float, default=5)
+cli.add_argument('-i', metavar='RUN', help='run number to ignore, repeatable', type=int, default=[20444], action='append')
 cli.add_argument('-C', metavar='URL', help='RCDB database connection string', type=str, default='mysql://rcdb@clasdb.jlab.org/rcdb')
-cli.add_argument('-I', metavar='RUN', help='run number to ignore, repeatable', type=int, default=[20444], action='append')
-cli.add_argument('-R', metavar='REGEX', help='regular expression for finding run number in directory names (default=.*(%d+)$)', type=str, default='.*(%d+)$')
+cli.add_argument('-R', metavar='REGEX', help='regular expression for finding run number in directory names', type=str, default='.*(\d+)$')
 cli.add_argument('-v', help='verbose mode, else only print failures', default=False, action='store_true')
 
 args = cli.parse_args()
@@ -38,10 +38,10 @@ if not os.path.isdir(args.path):
 import glob
 cached_dirs = glob.glob(args.path+'/*')
 cached_dirs = filter(lambda d: os.path.isdir(d) , cached_dirs)
-cached_dirs = filter(lambda d: re.match(args.R, cached_dirs) , cached_dirs)
+cached_dirs = filter(lambda d: re.match(args.R, d) , cached_dirs)
 
 import rcdb,datetime
-db = rcdb.RCDBProvider(args.r)
+db = rcdb.RCDBProvider(args.C)
 run = 1e9
 error_runs = []
 
