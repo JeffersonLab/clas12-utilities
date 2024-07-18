@@ -9,9 +9,9 @@ cli.add_argument('-n', metavar='#', help='mininum number of events per run', typ
 cli.add_argument('-f', metavar='#', help='minimum number of files per run', type=int, default=5)
 cli.add_argument('-m', metavar='#', help='minimum run number to consider', type=int, default=0)
 cli.add_argument('-d', metavar='#', help='number of days to look back in RCDB', type=float, default=5)
-cli.add_argument('-i', metavar='RUN', help='run number to ignore, repeatable', type=int, default=[20444], action='append')
+cli.add_argument('-i', metavar='RUN', help='run number to ignore, repeatable', type=int, default=[], action='append')
 cli.add_argument('-C', metavar='URL', help='RCDB database connection string', type=str, default='mysql://rcdb@clasdb.jlab.org/rcdb')
-cli.add_argument('-R', metavar='REGEX', help='regular expression for finding run number in directory names', type=str, default='.*(\d+)$')
+cli.add_argument('-R', metavar='REGEX', help='regular expression for finding run number in directory names', type=str, default='.*(\d\d\d\d\d\d)$')
 cli.add_argument('-v', help='verbose mode, else only print failures', default=False, action='store_true')
 
 args = cli.parse_args()
@@ -38,7 +38,8 @@ if not os.path.isdir(args.path):
 import glob
 cached_dirs = glob.glob(args.path+'/*')
 cached_dirs = filter(lambda d: os.path.isdir(d) , cached_dirs)
-cached_dirs = filter(lambda d: re.match(args.R, d) , cached_dirs)
+cached_dirs = filter(lambda d: re.match(args.R,d) , cached_dirs)
+cached_dirs = list(cached_dirs)
 
 import rcdb,datetime
 db = rcdb.RCDBProvider(args.C)
@@ -87,23 +88,25 @@ while True:
     logger.warning('Run %d ignored due to start time less than %.1f hours ago.'%(run.number,args.e))
     continue
 
-  run_dir = None
-  for d in cached_dirs:
-    if os.path.isdir(d) and d.endswith(str('%.6d'%run.number)):
-      run_dir = d
-      break
+  run_dir = list(filter(lambda d: re.match(args.R,d).group(1).lstrip('0')==str(run.number) , cached_dirs))
 
-  if run_dir is None:
+  if len(run_dir) == 0:
     logger.critical('Run %d started more than %.1f hours ago in RCDB but missing /mss directory.'%(run.number,args.e))
     error_runs.append(run.number)
     continue
+  elif len(run_dir) > 1:
+    logger.critical('Run %d has multiple /mss directories.'%(run.number))
+    error_runs.append(run.number)
+    continue
+
+  run_dir = run_dir.pop(0)
 
   if age_hours_end is None:
     logger.info('Run %d ignored due to missing end time in RCDB'%run.number)
     continue
 
   if age_hours_end > args.c:
-    if len(glob.glob(d+'/*')) < evio_files_count:
+    if len(glob.glob(run_dir+'/*')) < evio_files_count:
       logger.critical('Run %d ended more than %.1f hours ago in RCDB but missing /mss files.'%(run.number,args.c))
       error_runs.append(run.number)
       continue
