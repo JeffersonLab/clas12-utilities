@@ -30,10 +30,9 @@ else:
 
 logger = logging.getLogger()
 
-import os,sys
+import os
 if not os.path.isdir(args.path):
-    logger.critical('Invalid path:  '+args.path)
-    sys.exit(999)
+    cli.error('Invalid path:  '+args.path)
 
 import glob
 cached_dirs = glob.glob(args.path+'/*')
@@ -119,5 +118,6 @@ while True:
   if age_hours_start > args.d*24:
       break
 
+import sys
 sys.exit(len(error_runs))
 
