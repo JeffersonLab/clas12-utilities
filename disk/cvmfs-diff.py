@@ -74,7 +74,7 @@ def difflink(a,b):
         # if it's a relative symlink, they must be equal:
         elif os.readlink(a) != os.readlink(b):
             logging.getLogger().warning('RLNK: %s'%a)
-            return Falsr
+            return False
     return True
 
 def diff(a,b):
