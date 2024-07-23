@@ -11,11 +11,10 @@
 # is currently a one-shot, not monitored and not retried, and with a significant
 # probability of failure.  If it fails, future rsyncs will not detect changes and
 # so will not trigger the jobs, and the source filesystem then stays permanently out
-# of sync with CVMFS until the affected files are modified again.
-#
-# Note, permissions changes do not (always?) propagate, need to remove the file, let
-# it propagate, then add it back with correct permissions.  The rsync above does
-# detect and sync a permissions change, so the culprit must be downstream.
+# of sync with CVMFS until the affected files are modified again.  Also note that
+# permissions changes do not (always?) propagate, need to remove the file, let it
+# propagate, then add it back with correct permissions.  The rsync above does detect
+# and sync a permissions change, so the culprit must be downstream.
 #
 # Note, some CVMFS attributes prevent using standard filesystem tools:
 # * sticky bit doesn't exist (it's read-only)
@@ -24,15 +23,14 @@
 # * timestamp resolution
 #
 
-default_src = '/scigroup/cvmfs/hallb/clas12/sw'
-default_dest = '/cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw'
-default_ignores = ['.*/\.git/.*']
+local = '/scigroup/cvmfs'
+cvmfs = '/cvmfs/oasis.opensciencegrid.org/jlab'
 
 import argparse
 cli = argparse.ArgumentParser('cvmfs-diff',description='Compare local source and CVMFS target filesystems.',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-cli.add_argument('-l',help='local source directory (or subpath underneath default)',metavar='PATH',default=default_src)
-cli.add_argument('-c',help='CVMFS target directory',metavar='PATH',default=None)
-cli.add_argument('-i',help='ignore path regex, repeatable',default=default_ignores,action='append')
+cli.add_argument('-l',help='local source directory',metavar='PATH',default=local+'/hallb/clas12/sw')
+cli.add_argument('-c',help='CVMFS target directory',metavar='PATH',default=cvmfs+'/hallb/clas12/sw')
+cli.add_argument('-i',help='ignore path regex, repeatable',metavar='REGEX',default=['.*/\.git/.*'],action='append')
 cli.add_argument('-v',help='verbose mode, repeatable',action='count',default=0)
 cli.add_argument('-t',help='check timestamps',action='store_true',default=False)
 args = cli.parse_args()
@@ -44,15 +42,12 @@ elif args.v>0:
     logging.basicConfig(level=logging.WARNING,format='%(levelname)s: %(message)s')
 else:
     logging.basicConfig(level=logging.ERROR,format='%(levelname)s: %(message)s')
-if not args.l.startswith('/'):
-    if args.c:
-        cli.error('Option -c cannot be used with a relative path for -l.')
-    args.l = default_src + '/' + args.l
-if not args.c:
-    args.c = default_dest + args.l[len(default_src):]
-elif not args.c.startswith('/'):
-    cli.error('Option -c must be an absolute path.')
+
 import os
+args.l = os.path.abspath(args.l)
+args.c = os.path.abspath(args.c)
+if args.c == cli.get_default('c'):
+    args.c = cvmfs + args.l[len(local):]
 if not os.path.isdir(args.l):
     cli.error('Source directory invalid:  '+args.l)
 if not os.path.isdir(args.c):
@@ -72,17 +67,17 @@ def difflink(a,b):
                     logging.getLogger().warning('ALNK: %s'%a)
                     return False
         # if it's a relative symlink, they must be equal:
-        elif os.readlink(a) != os.readlink(b):
+        elif not os.path.exists(b) or os.readlink(a) != os.readlink(b):
             logging.getLogger().warning('RLNK: %s'%a)
             return False
     return True
 
 def diff(a,b):
+    if os.path.islink(a):
+        return difflink(a,b)
     if not os.path.exists(b):
         logging.getLogger().warning('MISS: %s'%a)
         return False
-    if os.path.islink(a):
-        return difflink(a,b)
     s1 = os.stat(a)
     s2 = os.stat(b)
     # require equal file sizes:
