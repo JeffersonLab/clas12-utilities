@@ -78,26 +78,25 @@ def difflink(a,b):
     return True
 
 def diff(a,b):
-    if os.path.islink(a):
-        return difflink(a,b)
     if not os.path.exists(b):
         logging.getLogger().warning('MISS: %s'%a)
         return False
-    else:
-        s1 = os.stat(a)
-        s2 = os.stat(b)
-        # require equal file sizes:
-        if not os.path.isdir(a) and s1.st_size != s2.st_size:
-            logging.getLogger().warning('SIZE: %s (%d!=%d)'%(a,s1.st_size,s2.st_size))
-            return False
-        # require equal world permissions bits:
-        if (s1.st_mode&0xF) != (s2.st_mode&0xF):
-            logging.getLogger().warning('MODE: %s (%d!=%d)'%(a,s1.st_mode,s2.st_mode))
-            return False
-        # require consistent modification times:
-        if args.t and int(s1.st_mtime) > int(s2.st_mtime):
-            logging.getLogger().warning('TIME: %s (%d!=%d)'%(a,s1.st_mtime,s2.st_mtime))
-            return False
+    if os.path.islink(a):
+        return difflink(a,b)
+    s1 = os.stat(a)
+    s2 = os.stat(b)
+    # require equal file sizes:
+    if not os.path.isdir(a) and s1.st_size != s2.st_size:
+        logging.getLogger().warning('SIZE: %s (%d!=%d)'%(a,s1.st_size,s2.st_size))
+        return False
+    # require equal world permissions bits:
+    if (s1.st_mode&0xF) != (s2.st_mode&0xF):
+        logging.getLogger().warning('MODE: %s (%d!=%d)'%(a,s1.st_mode,s2.st_mode))
+        return False
+    # require consistent modification times:
+    if args.t and int(s1.st_mtime) > int(s2.st_mtime):
+        logging.getLogger().warning('TIME: %s (%d!=%d)'%(a,s1.st_mtime,s2.st_mtime))
+        return False
     return True
 
 def ignore(path):
