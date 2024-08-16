@@ -117,6 +117,11 @@ class CondorTable(Table):
           ret = x.strftime('%m/%d %H:%M')
         except:
           pass
+    elif name == 'DiskUsage':
+      try:
+        ret = int(value)/1e6
+      except:
+        pass
     return ret
 
 def average(alist):
@@ -147,6 +152,7 @@ summary_table.add_column('gen','generator',9)
 summary_table.add_column('util','eff',4)
 summary_table.add_column('ceff','ceff',4)
 summary_table.add_column('att','att',4)
+summary_table.add_column('disk','DiskUsage',6)
 
 site_table = CondorTable()
 site_table.add_column('site','MATCH_GLIDEIN_Site',26)
@@ -175,6 +181,7 @@ job_table.add_column('start','JobCurrentStartDate',12)
 job_table.add_column('end','CompletionDate',12)
 job_table.add_column('user','user',10)
 job_table.add_column('gen','generator',9)
+job_table.add_column('disk','DiskUsage',6)
 
 def tail_log(job, nlines):
   print(''.ljust(80,'#'))
