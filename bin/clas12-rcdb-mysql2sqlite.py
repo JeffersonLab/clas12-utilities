@@ -28,7 +28,7 @@ if os.path.exists(args.outfile):
 
 cmd = r'''\
 mysqldump  --compatible=ansi --skip-extended-insert --compact  \
--urcdb -hclasdb.jlab.org rcdb | \
+-urcdb -hclasdb.jlab.org rcdb | grep -vE '^\s*CONSTRAINT.*FOREIGN\s+KEY' |\
 awk '
 
 BEGIN {
@@ -111,7 +111,7 @@ END {
     for (table in key) printf key[table]
     print "END TRANSACTION;"
 }
-' | sqlite3 ''' + args.outfile
+' | sqlite3 ''' + args.outfile + '| grep -v ^memory$'
 
 proc = Popen(cmd, shell=True, executable='/bin/bash')
 sys.exit(proc.wait())
