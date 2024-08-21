@@ -35,7 +35,7 @@ srcdir=/osgpool/hallb/clas12/gemc
 
 # remote destination for contents of $srcdir:
 remotehost=dtn1902
-remotepath=/lustre19/expphy/volatile/clas12/osg
+remotepath=/volatile/clas12/osg
 dest=$user@$remotehost:$remotepath
 
 # timeout transfer if it takes longer than this many seconds: 
