@@ -118,7 +118,7 @@ if dodu:
   top_sums_lines = [ fmt%(x,top_sums[x]) for x in reversed(sorted(top_sums,key=top_sums.get)) ]
   print('<h2>Usage Summary:</h2>')
   print('<table border>')
-  rint('<tr>')
+  print('<tr>')
   print('<th>subdirectory</th>')
   print('<th>size (TB)</th>')
   print('</tr>')
