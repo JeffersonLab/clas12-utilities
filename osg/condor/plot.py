@@ -71,12 +71,12 @@ def plot(args, logscale=0):
   h1att_gen = {}
   h1attq_gen = {}
   h1eff = ROOT.TH1D('h1eff',';CPU Utilization',100,0,1.2)
-  h2eff = ROOT.TH2D('h2eff',';Wall Hours;CPU Utilization',100,0,20,100,0,1.2)
+  h2eff = ROOT.TH2D('h2eff',';Wall Hours;CPU Utilization',100,0,32,100,0,1.2)
   h1ceff = ROOT.TH1D('h1ceff',';Cumulative Efficiency',100,0,1.2)
-  h2ceff = ROOT.TH2D('h2ceff',';Cumulative Wall Hours;Cumulative Efficiency',200,0,40,100,0,1.2)
+  h2ceff = ROOT.TH2D('h2ceff',';Cumulative Wall Hours;Cumulative Efficiency',200,0,48,100,0,1.2)
   h2att = ROOT.TH2D('h2att',';Job Attempts;Cumulative Efficiency',16,0.5,16.5,100,0,1.2)
   h1att = ROOT.TH1D('h1att',';Job Attempts',16,0.5,16.5)
-  h1wall = ROOT.TH1D('h1wall',';Wall Hours',100,0,20)
+  h1wall = ROOT.TH1D('h1wall',';Wall Hours',100,0,32)
   h1attq = h1att.Clone('h1attq')
   h1attq.GetXaxis().SetTitle('Queued Job Attempts')
   generators = set()
