@@ -4,7 +4,7 @@ dirname="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 
 cache=$HOME/vacate-stalls.txt
 
-limit=18.5
+limit=26
 
 touch $cache
 
