@@ -1,26 +1,29 @@
 #!/bin/bash -l
 
-# this uses the same mysql.connector that comes with ccdb:
+# use the same mysql.connector that you get via ccdb:
 module use /scigroup/cvmfs/hallb/clas12/sw/modulefiles
 module load -s ccdb
 
-SCRIPTDIR=`dirname $0`
+dir=`dirname $0`
 
-mkdir -p $HOME/disk
-cd $HOME/disk
+clas=/group/clas/www/clasweb/html/clas12offline/disk
+hps=/group/hps/www/hpsweb/html/disk
 
+mkdir -p $HOME/disk/tmp
+cd $HOME/disk/tmp
 rm -f index.html cache.html hps-volatile.html hps-cache.html
 
-$SCRIPTDIR/volatile_html.py $@ >& index.html
-scp -q index.html clas12@ifarm1901:/group/clas/www/clasweb/html/clas12offline/disk/volatile
+$dir/volatile_html.py $@ >& index.html
 
-$SCRIPTDIR/cache_html.py >& cache.html
-scp -q cache.html clas12@ifarm1901:/group/clas/www/clasweb/html/clas12offline/disk/cache/index.html
+scp -q index.html clas12@ifarm1901:$clas/volatile
 
-$SCRIPTDIR/volatile_html.py $@ /volatile/hallb/hps >& hps-volatile.html
-scp -q hps-volatile.html hps@ifarm1901:/group/hps/www/hpsweb/html/disk/volatile/index.html
+$dir/cache_html.py >& cache.html
+scp -q cache.html clas12@ifarm1901:$clas/cache/index.html
+
+$dir/volatile_html.py $@ /volatile/hallb/hps >& hps-volatile.html
+scp -q hps-volatile.html hps@ifarm1901:$hps/volatile/index.html
 
 # doing it from /cache/hallb/hps doesn't work, probably need to modify query
-$SCRIPTDIR/cache_html.py /cache/hallb >& hps-cache.html
-scp -q hps-cache.html hps@ifarm1901:/group/hps/www/hpsweb/html/disk/cache/index.html
+$dir/cache_html.py /cache/hallb >& hps-cache.html
+scp -q hps-cache.html hps@ifarm1901:$hps/cache/index.html
 
