@@ -60,7 +60,7 @@ def plot(args, logscale=0):
   ROOT.gStyle.SetStatY(0.95)
   ROOT.gStyle.SetHistMinimumZero(ROOT.kTRUE)
   ROOT.gROOT.ForceStyle()
-  can = ROOT.TCanvas('can','',1200,700)
+  can = ROOT.TCanvas('can','',1800,1000)
   can.Divide(4,3)
   can.Draw()
   h1wall_site = {}
@@ -225,6 +225,8 @@ def plot(args, logscale=0):
   for ii, gen in enumerate(sorted(h1att_gen.keys())):
     h1att_gen[gen].Draw(opt)
     opt = 'SAME'
+  import datetime
+  leg_gen.SetHeader(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
   leg_gen.Draw()
   can.cd(7)
   leg_site.Draw()
