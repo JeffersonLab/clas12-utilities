@@ -50,5 +50,7 @@ $dirname/condor-probe.py -completed -hours 24 -plot $plotfile >& /dev/null
 cat $emailbody | mail -s New-OSG-dAiLyDiGeSt $recipients
 
 chmod ag+r $plotfile $plotfilelogscale
-scp $plotfile $plotfilelogscale dtn1902:/volatile/clas12/osg/daily-digest
+ln -sf $plotfile latest.pdf
+ln -sf $plotfilelogscale latest-logscale.pdf
+scp latest.pdf latest-logscale.pdf $plotfile $plotfilelogscale dtn1902:/volatile/clas12/osg/daily-digest
 
