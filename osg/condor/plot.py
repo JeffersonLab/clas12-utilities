@@ -225,10 +225,10 @@ def plot(args, logscale=0):
   for ii, gen in enumerate(sorted(h1att_gen.keys())):
     h1att_gen[gen].Draw(opt)
     opt = 'SAME'
-  import datetime
-  leg_gen.SetHeader(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
   leg_gen.Draw()
   can.cd(7)
+  import datetime
+  leg_site.SetHeader(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
   leg_site.Draw()
   can.cd(8) #####################################
   ROOT.gPad.SetLogz(logscale)
