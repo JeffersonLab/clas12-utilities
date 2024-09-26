@@ -13,7 +13,7 @@ mkdir -p $HOME/disk/tmp
 cd $HOME/disk/tmp
 rm -f index.html cache.html hps-volatile.html hps-cache.html
 
-$dir/volatile_html.py $@ >& index.html
+$dir/volatile_html.py -d $@ >& index.html
 
 scp -q index.html clas12@ifarm:$clas/volatile
 
