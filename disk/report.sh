@@ -2,7 +2,7 @@
 
 DISK=/work/clas12
 OUTDIR=$HOME/disk/`date +%Y%m%d`
-SCRIPTDIR=`dirname $0`
+SCRIPTDIR=$(cd $(dirname $0) && pwd -P)
 LIMIT=30
 
 mkdir -p $OUTDIR
