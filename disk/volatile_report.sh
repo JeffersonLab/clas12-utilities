@@ -15,15 +15,15 @@ rm -f index.html cache.html hps-volatile.html hps-cache.html
 
 $dir/volatile_html.py $@ >& index.html
 
-scp -q index.html clas12@ifarm1901:$clas/volatile
+scp -q index.html clas12@ifarm:$clas/volatile
 
 $dir/cache_html.py >& cache.html
-scp -q cache.html clas12@ifarm1901:$clas/cache/index.html
+scp -q cache.html clas12@ifarm:$clas/cache/index.html
 
 $dir/volatile_html.py $@ /volatile/hallb/hps >& hps-volatile.html
-scp -q hps-volatile.html hps@ifarm1901:$hps/volatile/index.html
+scp -q hps-volatile.html hps@ifarm:$hps/volatile/index.html
 
 # doing it from /cache/hallb/hps doesn't work, probably need to modify query
 $dir/cache_html.py /cache/hallb >& hps-cache.html
-scp -q hps-cache.html hps@ifarm1901:$hps/cache/index.html
+scp -q hps-cache.html hps@ifarm:$hps/cache/index.html
 
