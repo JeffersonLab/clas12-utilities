@@ -1,0 +1,1 @@
+../disk/cvmfs-diff.py
