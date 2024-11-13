@@ -1,46 +1,63 @@
 #!/usr/bin/env python3
 
-mya_fmt = '%Y-%m-%dT%H:%M:%S'
-
 import sys
-import argparse
 import datetime
-cli = argparse.ArgumentParser(description='A Simplest Mya Plotter', epilog='For example, for the HWP:  myaplt -s IGL1I00OD16_16 -b 4013 ')
-cli.add_argument('pv', help='pv,alias', nargs='+')
-cli.add_argument('-b', help='begin date or RCDB run number (default=yesterday)', default=datetime.datetime.now()-datetime.timedelta(days=-1))
-cli.add_argument('-e', help='end date or RCDB run number (default=now)', default=datetime.datetime.now())
-cli.add_argument('-m', help='Mya deployment (default=ops)', default='ops', choices=['ops','history','dev'])
-cli.add_argument('-r', help='RCDB connection string (default=mysql://rcdb@clasdb.jlab.org/rcdb)', default='mysql://rcdb@clasdb.jlab.org/rcdb', metavar='RCDB_CONNECTION')
-cli.add_argument('-d', help='date format (default=%s)'%mya_fmt.replace('%','%%'), default=mya_fmt)
-cli.add_argument('-v', help='increase verbosity', action='count', default=0)
-cli.add_argument('-s', help='use step plotting style')
-args = cli.parse_args(sys.argv[1:])
 
-import datetime
-def get_mya_date(value, direction):
-    if type(value) is datetime.datetime:
-        # it's already a date object, just format it for Mya
-        return value.strftime(mya_fmt)
-    elif value.isdigit():
-        # assume it's a run number and get its timestamp from RCDB:
+mya_url = 'https://epicsweb.jlab.org/myquery/interval'
+mya_fmt = '%Y-%m-%dT%H:%M:%S'
+usr_fmt = mya_fmt
+
+rcdb_connection = 'mysql://rcdb@clasdb.jlab.org/rcdb'
+rcdb_provider = None
+
+def get_rcdb_datetime(run):
+    # Get a datetime range based on a run in RCDB:
+    global rcdb_provider
+    if rcdb_provider is None:
         import rcdb
-        db = rcdb.RCDBProvider(args.r)
-        try:
-            return db.get_condition(int(value), ['run_start_time','run_end_time'][direction]).value.strftime(mya_fmt)
-        except AttributeError:
-            sys.exit('ERROR:  Invalid run in RCDB:  '+value+'\n'+'ERROR:  Try a different run number?')
+        rcdb_provider = rcdb.RCDBProvider(rcdb_connection)
+    try:
+        return [rcdb_provider.get_condition(int(run), 'run_start_time').value,
+                rcdb_provider.get_condition(int(run), 'run_end_time').value]
+    except AttributeError:
+        return None
+
+def get_rcdb_runs(rmin, rmax):
+    global rcdb_provider
+    if rcdb_provider is None:
+        import rcdb
+        rcdb_provider = rcdb.RCDBProvider(rcdb_connection)
+    run = rcdb_provider.get_next_run(rmin-1)
+    while run.number < rmax:
+        r = rcdb_provider.get_next_run(run)
+        if r is None:
+            run.number += 1
+        else:
+            run = r
+            d = get_rcdb_datetime(run.number)
+            if d is not None:
+                yield [run.number, d[0]]
+
+def get_datetime(value, side=0):
+    # Get a datetime by parsing a string, or from a run in RCDB:
+    if type(value) is datetime.datetime:
+        return value
+    elif type(value) is str and value.isdigit():
+        return get_datetime(int(value))
     elif type(value) is str:
-        # assume it's a date string and convert it to Mya's format:
-        try:
-            return datetime.datetime.strptime(value, args.d).strftime(mya_fmt)
-        except ValueError:
-            sys.exit('ERROR:  Invalid date:  '+value+'\nERROR:  Expected format:  '+args.d)
+        try: return datetime.datetime.strptime(value, user_fmt)
+        except ValueError: return None
+    elif type(value) is int:
+        return get_rcdb_datetime(value)[side]
 
 def get_mya_df(pv, alias, args):
-    # Retrive from Mya one dataframe for one PV:
+    # Retrive one dataframe from Mya for one PV:
     import requests
-    url = 'https://epicsweb.jlab.org/myquery/interval'
-    url += '?p=1&a=1&d=1&c=%s&m=%s&b=%s&e=%s' % (args.p, args.m, get_mya_date(args.b,0), get_mya_date(args.e,1))
+    b = get_datetime(args.b,0).strftime(mya_fmt)
+    e = get_datetime(args.e,1).strftime(mya_fmt)
+    if b is None: sys.exit('ERROR:  Invalid -b:  '+args.b)
+    if e is None: sys.exit('ERROR:  Invalid -e:  '+args.e)
+    url = mya_url+'?p=1&a=1&d=1&c=%s&m=%s&b=%s&e=%s' % (pv, args.m, b, e)
     if args.v>2: print(url)
     requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
     retries = requests.adapters.Retry(total=10, backoff_factor=0.1, status_forcelist=[500,502,503,504])
@@ -56,12 +73,12 @@ def get_mya_df(pv, alias, args):
     return df
 
 def get_mya_dfs(args):
-    # Spawn threads for multiple PVs:
+    import concurrent.futures
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
-        for pv in args.pv:
+        for pv,alias in zip(args.pv, args.alias):
             if args.v>1: print('INFO:     Reading %s from Mya ...'%pv)
-            futures.append(executor.submit(get_mya_df,pv.split(',').pop(0),pv.aplit(';').pop(),args))
+            futures.append(executor.submit(get_mya_df, pv, alias, args))
         for f in futures:
             concurrent.futures.wait([f])
             if f.exception() is not None:
@@ -69,17 +86,53 @@ def get_mya_dfs(args):
                 sys.exit(222)
             yield f.result()
 
-dfs = get_mya_dfs(args)
-df = pandas.concat(dfs).sort_values('d')
-import matplotlib.pyplot as plt
-import matplotlib.dates as dates
-from matplotlib.ticker import MaxNLocator
-plt.gca().xaxis.set_major_formatter(dates.DateFormatter('%m/%d/%Y'))
-plt.gca().xaxis.set_major_locator(dates.DayLocator())
-for pv in args.pv:
-    if args.s: plt.step(df['d'], df[pv.split(',').pop()], where='pre')
-    else:      plt.plot(df['d'], df[pv.split(',').pop(0))
-plt.gcf().autofmt_xdate()
-plt.gca().xaxis.set_major_locator(MaxNLocator(nbins=10))
-plt.show()
+def plot(df, args):
+    import pandas
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as dates
+    from matplotlib.ticker import MaxNLocator
+    plt.gca().xaxis.set_major_formatter(dates.DateFormatter('%m/%d/%Y'))
+    plt.gca().xaxis.set_major_locator(dates.DayLocator())
+    for alias in args.alias:
+        if args.s: plt.step(df['d'], df[alias], where='pre')
+        else:      plt.plot(df['d'], df[alias])
+        #if args.s: plt.step(df['run'], df[alias], where='pre')
+        #else:      plt.plot(df['run'], df[alias])
+    plt.gcf().autofmt_xdate()
+    plt.gca().xaxis.set_major_locator(MaxNLocator(nbins=10))
+    plt.ylabel(args.alias[0])
+
+def get_cli():
+    import argparse
+    cli = argparse.ArgumentParser(description='A Simplest Mya Plotter', epilog='For example, for the HWP:  myaplt -s IGL1I00OD16_16,HWP -b 4013 ')
+    cli.add_argument('pv', help='pv[,alias]', nargs='+')
+    cli.add_argument('-b', help='begin date or RCDB run number (default=yesterday)', default=datetime.datetime.now()-datetime.timedelta(days=-1))
+    cli.add_argument('-e', help='end date or RCDB run number (default=now)', default=datetime.datetime.now())
+    cli.add_argument('-m', help='Mya deployment (default=ops)', default='ops', choices=['ops','history','dev'])
+    cli.add_argument('-r', help=f'RCDB connection string (default={rcdb_connection})', default=rcdb_connection, metavar='RCDB_CONNECTION')
+    cli.add_argument('-d', help='date format (default=%s)'%mya_fmt.replace('%','%%'), default=mya_fmt)
+    cli.add_argument('-v', help='increase verbosity', action='count', default=0)
+    cli.add_argument('-s', help='use step plotting style', default=False, action='store_true')
+    return cli
+
+if __name__ == '__main__':
+    global user_fmt
+    global rcdb_connection
+    args = get_cli().parse_args(sys.argv[1:])
+    rcdb_connection = args.r
+    user_fmt = args.d
+    args.alias = [ pv.split(',').pop() for pv in args.pv ]
+    args.pv = [ pv.split(',').pop(0) for pv in args.pv ]
+    if args.v > 3: print(args)
+    import pandas
+    dfs = list(get_mya_dfs(args))
+    df = pandas.concat(dfs).sort_values('d')
+    #if args.b.isdigit() and args.e.isdigit():
+    #    runs = list(get_rcdb_runs(int(args.b), int(args.e)))
+    #    pd = pandas.DataFrame({'d':[r[1] for r in runs],'run':[r[0] for r in runs]})
+    #    if args.v > 2: print(pd)
+    #    df = pandas.concat([df,pd]).sort_values('d')
+    plot(df, args)
+    import matplotlib.pyplot as plt
+    plt.show()
 
