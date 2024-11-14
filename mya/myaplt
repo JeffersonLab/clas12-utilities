@@ -10,6 +10,26 @@ usr_fmt = mya_fmt
 rcdb_connection = 'mysql://rcdb@clasdb.jlab.org/rcdb'
 rcdb_provider = None
 
+def get_cli():
+    global rcdb_connection
+    global user_fmt
+    import argparse
+    cli = argparse.ArgumentParser(description='A Simplest Mya Plotter', epilog='For example, for the HWP:  myaplt -s -m history -b 4013 -e 4014 IGL1I00OD16_16,HWP')
+    cli.add_argument('pv', help='pv[,alias]', nargs='+')
+    cli.add_argument('-b', help='begin date or RCDB run number (default=yesterday)', default=datetime.datetime.now()-datetime.timedelta(days=-1))
+    cli.add_argument('-e', help='end date or RCDB run number (default=now)', default=datetime.datetime.now())
+    cli.add_argument('-m', help='Mya deployment (default=ops)', default='ops', choices=['ops','history','dev'])
+    cli.add_argument('-r', help=f'RCDB connection string (default={rcdb_connection})', default=rcdb_connection, metavar='RCDB_CONNECTION')
+    cli.add_argument('-d', help='date format (default=%s)'%mya_fmt.replace('%','%%'), default=mya_fmt)
+    cli.add_argument('-v', help='increase verbosity', action='count', default=0)
+    cli.add_argument('-s', help='use step plotting style', default=False, action='store_true')
+    args = cli.parse_args(sys.argv[1:])
+    args.alias = [ pv.split(',').pop() for pv in args.pv ]
+    args.pv = [ pv.split(',').pop(0) for pv in args.pv ]
+    rcdb_connection = args.r
+    user_fmt = args.d
+    return cli,args
+
 def get_rcdb_datetime(run):
     # Get a datetime range based on a run in RCDB:
     global rcdb_provider
@@ -17,8 +37,11 @@ def get_rcdb_datetime(run):
         import rcdb
         rcdb_provider = rcdb.RCDBProvider(rcdb_connection)
     try:
-        return [rcdb_provider.get_condition(int(run), 'run_start_time').value,
-                rcdb_provider.get_condition(int(run), 'run_end_time').value]
+        b = rcdb_provider.get_condition(int(run), 'run_start_time')
+        e = rcdb_provider.get_condition(int(run), 'run_end_time')
+        if not b is None: b = b.value
+        if not e is None: e = e.value
+        return [b,e]
     except AttributeError:
         return None
 
@@ -36,7 +59,7 @@ def get_rcdb_runs(rmin, rmax):
             run = r
             d = get_rcdb_datetime(run.number)
             if d is not None:
-                yield [run.number, d[0]]
+                yield [run.number , d[0]]
 
 def get_datetime(value, side=0):
     # Get a datetime by parsing a string, or from a run in RCDB:
@@ -53,10 +76,12 @@ def get_datetime(value, side=0):
 def get_mya_df(pv, alias, args):
     # Retrive one dataframe from Mya for one PV:
     import requests
-    b = get_datetime(args.b,0).strftime(mya_fmt)
-    e = get_datetime(args.e,1).strftime(mya_fmt)
+    b = get_datetime(args.b,0)
+    e = get_datetime(args.e,1)
     if b is None: sys.exit('ERROR:  Invalid -b:  '+args.b)
     if e is None: sys.exit('ERROR:  Invalid -e:  '+args.e)
+    b = b.strftime(mya_fmt)
+    e = e.strftime(mya_fmt)
     url = mya_url+'?p=1&a=1&d=1&c=%s&m=%s&b=%s&e=%s' % (pv, args.m, b, e)
     if args.v>2: print(url)
     requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
@@ -73,6 +98,7 @@ def get_mya_df(pv, alias, args):
     return df
 
 def get_mya_dfs(args):
+    # Spawn Mya query threads, one per PV:
     import concurrent.futures
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
@@ -82,8 +108,7 @@ def get_mya_dfs(args):
         for f in futures:
             concurrent.futures.wait([f])
             if f.exception() is not None:
-                print(f.exception())
-                sys.exit(222)
+                sys.exit(f.exception())
             yield f.result()
 
 def plot(df, args):
@@ -96,43 +121,45 @@ def plot(df, args):
     for alias in args.alias:
         if args.s: plt.step(df['d'], df[alias], where='pre')
         else:      plt.plot(df['d'], df[alias])
-        #if args.s: plt.step(df['run'], df[alias], where='pre')
-        #else:      plt.plot(df['run'], df[alias])
     plt.gcf().autofmt_xdate()
     plt.gca().xaxis.set_major_locator(MaxNLocator(nbins=10))
     plt.ylabel(args.alias[0])
 
-def get_cli():
-    import argparse
-    cli = argparse.ArgumentParser(description='A Simplest Mya Plotter', epilog='For example, for the HWP:  myaplt -s IGL1I00OD16_16,HWP -b 4013 ')
-    cli.add_argument('pv', help='pv[,alias]', nargs='+')
-    cli.add_argument('-b', help='begin date or RCDB run number (default=yesterday)', default=datetime.datetime.now()-datetime.timedelta(days=-1))
-    cli.add_argument('-e', help='end date or RCDB run number (default=now)', default=datetime.datetime.now())
-    cli.add_argument('-m', help='Mya deployment (default=ops)', default='ops', choices=['ops','history','dev'])
-    cli.add_argument('-r', help=f'RCDB connection string (default={rcdb_connection})', default=rcdb_connection, metavar='RCDB_CONNECTION')
-    cli.add_argument('-d', help='date format (default=%s)'%mya_fmt.replace('%','%%'), default=mya_fmt)
-    cli.add_argument('-v', help='increase verbosity', action='count', default=0)
-    cli.add_argument('-s', help='use step plotting style', default=False, action='store_true')
-    return cli
+def ticks(df, rmin, rmax):
+    n = 40
+    bins = []
+    vals = []
+    labels = []
+    t0 = df['d'][0]
+    t1 = df['d'][len(df['d'])-1]
+    for i,(r,t) in enumerate(filter(lambda x: x[1], get_rcdb_runs(rmin,rmax))):
+        for j in range(40):
+            t3 = t0 + 1.0/n*j*(t1-t0)
+            if t > t3 and t < t3 + 1.0/n*(t1-t0):
+                fraction = (t-t0) / (t1-t0)
+                absolute = t0 + fraction*(t1-t0)
+                if fraction>=0 and fraction<=1 and j not in bins:
+                    bins.append(j)
+                    vals.append(absolute)
+                    labels.append(r)
+    import matplotlib.pyplot as plt
+    ax1 = plt.gcf().get_axes()[0]
+    ax2 = ax1.twiny()
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.set_xticks(vals)
+    ax2.set_xticklabels(labels)
+    ax2.set_xlabel('Run Number')
+    ax2.tick_params(axis='x', labelrotation=90)
 
 if __name__ == '__main__':
-    global user_fmt
-    global rcdb_connection
-    args = get_cli().parse_args(sys.argv[1:])
-    rcdb_connection = args.r
-    user_fmt = args.d
-    args.alias = [ pv.split(',').pop() for pv in args.pv ]
-    args.pv = [ pv.split(',').pop(0) for pv in args.pv ]
+    cli,args = get_cli()
     if args.v > 3: print(args)
     import pandas
     dfs = list(get_mya_dfs(args))
     df = pandas.concat(dfs).sort_values('d')
-    #if args.b.isdigit() and args.e.isdigit():
-    #    runs = list(get_rcdb_runs(int(args.b), int(args.e)))
-    #    pd = pandas.DataFrame({'d':[r[1] for r in runs],'run':[r[0] for r in runs]})
-    #    if args.v > 2: print(pd)
-    #    df = pandas.concat([df,pd]).sort_values('d')
     plot(df, args)
+    if args.b.isdigit() and args.e.isdigit():
+        ticks(df, int(args.b), int(args.e))
     import matplotlib.pyplot as plt
     plt.show()
 
