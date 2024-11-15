@@ -23,6 +23,7 @@ def get_cli():
     cli.add_argument('-d', help='date format (default=%s)'%mya_fmt.replace('%','%%'), default=mya_fmt)
     cli.add_argument('-v', help='increase verbosity', action='count', default=0)
     cli.add_argument('-s', help='use step plotting style', default=False, action='store_true')
+    cli.add_argument('-c', help='calibrate runs with a simple deadband (first pv only)', default=None, type=float)
     args = cli.parse_args(sys.argv[1:])
     args.alias = [ pv.split(',').pop() for pv in args.pv ]
     args.pv = [ pv.split(',').pop(0) for pv in args.pv ]
@@ -46,6 +47,7 @@ def get_rcdb_datetime(run):
         return None
 
 def get_rcdb_runs(rmin, rmax):
+    # Get a list of runs and their start times from RCDB:
     global rcdb_provider
     if rcdb_provider is None:
         import rcdb
@@ -74,7 +76,7 @@ def get_datetime(value, side=0):
         return get_rcdb_datetime(value)[side]
 
 def get_mya_df(pv, alias, args):
-    # Retrive one dataframe from Mya for one PV:
+    # Retrieve one dataframe from Mya for one PV:
     import requests
     b = get_datetime(args.b,0)
     e = get_datetime(args.e,1)
@@ -91,10 +93,10 @@ def get_mya_df(pv, alias, args):
     result = session.get(url, timeout=1.0, verify=False)
     import pandas
     df = pandas.DataFrame(result.json().get('data'))
+    df.rename(columns={'v':alias}, inplace=True)
     if args.v>1: print(df)
     df['d'] = [ datetime.datetime.fromtimestamp(int(x)/1000) for x in df['d'] ]
     if args.v>0: print(df)
-    df.rename(columns={'v':alias}, inplace=True)
     return df
 
 def get_mya_dfs(args):
@@ -112,6 +114,7 @@ def get_mya_dfs(args):
             yield f.result()
 
 def plot(df, args):
+    # pl
     import pandas
     import matplotlib.pyplot as plt
     import matplotlib.dates as dates
@@ -125,23 +128,21 @@ def plot(df, args):
     plt.gca().xaxis.set_major_locator(MaxNLocator(nbins=10))
     plt.ylabel(args.alias[0])
 
-def ticks(df, rmin, rmax):
-    n = 40
-    bins = []
-    vals = []
-    labels = []
-    t0 = df['d'][0]
-    t1 = df['d'][len(df['d'])-1]
-    for i,(r,t) in enumerate(filter(lambda x: x[1], get_rcdb_runs(rmin,rmax))):
-        for j in range(40):
-            t3 = t0 + 1.0/n*j*(t1-t0)
-            if t > t3 and t < t3 + 1.0/n*(t1-t0):
-                fraction = (t-t0) / (t1-t0)
-                absolute = t0 + fraction*(t1-t0)
+def runticks(tmin, tmax, runs):
+    # Generate nmax (at most) ticks for run numbers:
+    nmax, bins = 40, []
+    for i,(r,t) in enumerate(runs):
+        for j in range(nmax):
+            t1 = tmin + 1.0/nmax*j*(tmax-tmin)
+            t2 = t1 + 1.0/nmax*(tmax-tmin)
+            if t>=t1 and t<t2:
+                fraction = (t-tmin) / (tmax-tmin)
+                absolute = tmin + fraction*(tmax-tmin)
                 if fraction>=0 and fraction<=1 and j not in bins:
                     bins.append(j)
-                    vals.append(absolute)
-                    labels.append(r)
+                    yield [r,absolute]
+
+def ticks(vals, labels):
     import matplotlib.pyplot as plt
     ax1 = plt.gcf().get_axes()[0]
     ax2 = ax1.twiny()
@@ -151,15 +152,39 @@ def ticks(df, rmin, rmax):
     ax2.set_xlabel('Run Number')
     ax2.tick_params(axis='x', labelrotation=90)
 
+def calib(df, alias, deadband=0):
+    val,prev_row = None,None
+    for i, row in df.iterrows():
+        val = row[alias]
+        if prev_row is None or abs(val-prev_row[alias]) > deadband:
+            print(row['run'], row['d'], val, flush=True)
+        prev_row = row
+
 if __name__ == '__main__':
     cli,args = get_cli()
-    if args.v > 3: print(args)
+    if args.v > 4: print(args)
     import pandas
     dfs = list(get_mya_dfs(args))
     df = pandas.concat(dfs).sort_values('d')
-    plot(df, args)
     if args.b.isdigit() and args.e.isdigit():
-        ticks(df, int(args.b), int(args.e))
+        runs = list(filter(lambda x: x[1], get_rcdb_runs(int(args.b),int(args.e))))
+        rt = list(runticks(df['d'][0], df['d'][len(df['d'])-1], runs))
+        if args.c is not None:
+            x = pandas.DataFrame(data={'d':[x[1] for x in runs], 'run':[x[0] for x in runs]})
+            if args.v > 3: print(df)
+            df = pandas.concat([df,x]).sort_values('d')
+            if args.v > 3: print(df)
+            df = df.ffill().bfill()
+            if args.v > 3: print(df)
+            if args.v > 4:
+                with pandas.option_context('display.max_rows', None):
+                    print(df, flush=True)
+            calib(df, args.alias[0])
+#        df = df.reindex(df['d'].sort_values().index)
+        plot(df, args)
+        v = ticks([x[1] for x in rt], [str(x[0]) for x in rt])
+    else:
+        plot(df, args)
     import matplotlib.pyplot as plt
     plt.show()
 
