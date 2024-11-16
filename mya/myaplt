@@ -157,7 +157,7 @@ def calib(df, alias, deadband=0):
     for i, row in df.iterrows():
         val = row[alias]
         if prev_row is None or abs(val-prev_row[alias]) > deadband:
-            print(row['run'], row['d'], val, flush=True)
+            print('CALIB:  ',row['run'], row['d'], val, flush=True)
         prev_row = row
 
 if __name__ == '__main__':
