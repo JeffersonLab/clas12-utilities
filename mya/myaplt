@@ -85,7 +85,6 @@ def get_mya_df(pv, alias, args):
     b = b.strftime(mya_fmt)
     e = e.strftime(mya_fmt)
     url = mya_url+'?p=1&a=1&d=1&c=%s&m=%s&b=%s&e=%s' % (pv, args.m, b, e)
-    if args.v>2: print(url)
     requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
     retries = requests.adapters.Retry(total=10, backoff_factor=0.1, status_forcelist=[500,502,503,504])
     session = requests.Session()
@@ -94,9 +93,7 @@ def get_mya_df(pv, alias, args):
     import pandas
     df = pandas.DataFrame(result.json().get('data'))
     df.rename(columns={'v':alias}, inplace=True)
-    if args.v>1: print(df)
     df['d'] = [ datetime.datetime.fromtimestamp(int(x)/1000) for x in df['d'] ]
-    if args.v>0: print(df)
     return df
 
 def get_mya_dfs(args):
@@ -105,7 +102,6 @@ def get_mya_dfs(args):
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
         for pv,alias in zip(args.pv, args.alias):
-            if args.v>1: print('INFO:     Reading %s from Mya ...'%pv)
             futures.append(executor.submit(get_mya_df, pv, alias, args))
         for f in futures:
             concurrent.futures.wait([f])
@@ -162,7 +158,6 @@ def calib(df, alias, deadband=0):
 
 if __name__ == '__main__':
     cli,args = get_cli()
-    if args.v > 4: print(args)
     import pandas
     dfs = list(get_mya_dfs(args))
     df = pandas.concat(dfs).sort_values('d')
@@ -171,12 +166,9 @@ if __name__ == '__main__':
         rt = list(runticks(df['d'][0], df['d'][len(df['d'])-1], runs))
         if args.c is not None:
             x = pandas.DataFrame(data={'d':[x[1] for x in runs], 'run':[x[0] for x in runs]})
-            if args.v > 3: print(df)
             df = pandas.concat([df,x]).sort_values('d')
-            if args.v > 3: print(df)
             df = df.ffill().bfill()
-            if args.v > 3: print(df)
-            if args.v > 4:
+            if args.v > 1:
                 with pandas.option_context('display.max_rows', None):
                     print(df, flush=True)
             calib(df, args.alias[0])
