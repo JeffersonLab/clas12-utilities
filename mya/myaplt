@@ -46,7 +46,7 @@ def get_rcdb_datetime(run):
     except AttributeError:
         return None
 
-def get_rcdb_runs(rmin, rmax):
+def get_rcdb_datetimes(rmin, rmax):
     # Get a list of runs and their start times from RCDB:
     global rcdb_provider
     if rcdb_provider is None:
@@ -76,7 +76,7 @@ def get_datetime(value, side=0):
             try: return datetime.datetime.strptime(value, user_fmt)
             except ValueError: return None
     else:
-        sys.exit('NOOOOOOOOO')
+        raise TypeError(f'Invalid type ({value})')
 
 def get_mya_df(url):
     # Put a Mya query into a dataframe:
@@ -125,9 +125,10 @@ def plot(df, args):
     from matplotlib.ticker import MaxNLocator
     plt.gca().xaxis.set_major_formatter(dates.DateFormatter('%m/%d/%Y'))
     plt.gca().xaxis.set_major_locator(dates.DayLocator())
+    import numpy
     for alias in args.alias:
-        if args.s: plt.step(df['d'], df[alias], where='pre')
-        else:      plt.plot(df['d'], df[alias])
+        if args.s: plt.step(df['d'].to_numpy(), df[alias].to_numpy(), where='pre')
+        else:      plt.plot(df['d'].to_numpy(), df[alias].to_numpy())
     plt.gcf().autofmt_xdate()
     plt.gca().xaxis.set_major_locator(MaxNLocator(nbins=10))
     plt.ylabel(args.alias[0])
@@ -170,12 +171,11 @@ if __name__ == '__main__':
     dfs = list(get_mya_pv_dfs(args))
     df = pandas.concat(dfs).sort_values('d')
     if args.b.isdigit() and args.e.isdigit():
-        runs = list(filter(lambda x: x[1], get_rcdb_runs(int(args.b),int(args.e))))
+        runs = list(filter(lambda x: x[1], get_rcdb_datetimes(int(args.b),int(args.e))))
         rt = list(runticks(df['d'][0], df['d'][len(df['d'])-1], runs))
         if args.c is not None:
             x = pandas.DataFrame(data={'d':[x[1] for x in runs], 'run':[x[0] for x in runs]})
-            df = pandas.concat([df,x]).sort_values('d')
-            df = df.ffill().bfill()
+            df = pandas.concat([df,x]).sort_values('d').ffill().bfill()
             if args.v > 1:
                 with pandas.option_context('display.max_rows', None):
                     print(df, flush=True)
