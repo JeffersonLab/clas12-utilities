@@ -52,7 +52,7 @@ def get_rcdb_runs(rmin, rmax):
     if rcdb_provider is None:
         import rcdb
         rcdb_provider = rcdb.RCDBProvider(rcdb_connection)
-    run = rcdb_provider.get_next_run(rmin-1)
+    run = rcdb_provider.get_prev_run(rmin)
     while run.number < rmax:
         r = rcdb_provider.get_next_run(run)
         if r is None:
@@ -67,24 +67,20 @@ def get_datetime(value, side=0):
     # Get a datetime by parsing a string, or from a run in RCDB:
     if type(value) is datetime.datetime:
         return value
-    elif type(value) is str and value.isdigit():
-        return get_datetime(int(value))
-    elif type(value) is str:
-        try: return datetime.datetime.strptime(value, user_fmt)
-        except ValueError: return None
     elif type(value) is int:
         return get_rcdb_datetime(value)[side]
+    elif type(value) is str:
+        if value.isdigit():
+            return get_datetime(int(value))
+        elif type(value) is str:
+            try: return datetime.datetime.strptime(value, user_fmt)
+            except ValueError: return None
+    else:
+        sys.exit('NOOOOOOOOO')
 
-def get_mya_df(pv, alias, args):
-    # Retrieve one dataframe from Mya for one PV:
+def get_mya_df(url):
+    # Put a Mya query into a dataframe:
     import requests
-    b = get_datetime(args.b,0)
-    e = get_datetime(args.e,1)
-    if b is None: sys.exit('ERROR:  Invalid -b:  '+args.b)
-    if e is None: sys.exit('ERROR:  Invalid -e:  '+args.e)
-    b = b.strftime(mya_fmt)
-    e = e.strftime(mya_fmt)
-    url = mya_url+'?p=1&a=1&d=1&c=%s&m=%s&b=%s&e=%s' % (pv, args.m, b, e)
     requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
     retries = requests.adapters.Retry(total=10, backoff_factor=0.1, status_forcelist=[500,502,503,504])
     session = requests.Session()
@@ -92,17 +88,30 @@ def get_mya_df(pv, alias, args):
     result = session.get(url, timeout=1.0, verify=False)
     import pandas
     df = pandas.DataFrame(result.json().get('data'))
-    df.rename(columns={'v':alias}, inplace=True)
     df['d'] = [ datetime.datetime.fromtimestamp(int(x)/1000) for x in df['d'] ]
     return df
 
-def get_mya_dfs(args):
+def get_mya_pv_df(pv, alias, args):
+    # Retrieve one dataframe from Mya for one PV:
+    b = get_datetime(args.b,0)
+    e = get_datetime(args.e,1)
+    if b is None: sys.exit('ERROR:  Invalid -b:  '+args.b)
+    if e is None: sys.exit('ERROR:  Invalid -e:  '+args.e)
+    b = b.strftime(mya_fmt)
+    e = e.strftime(mya_fmt)
+    url = mya_url+'?p=1&a=1&d=1&c=%s&m=%s&b=%s&e=%s' % (pv, args.m, b, e)
+    if args.v>0: print(url)
+    df = get_mya_df(url)
+    df.rename(columns={'v':alias}, inplace=True)
+    return df
+
+def get_mya_pv_dfs(args):
     # Spawn Mya query threads, one per PV:
     import concurrent.futures
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
         for pv,alias in zip(args.pv, args.alias):
-            futures.append(executor.submit(get_mya_df, pv, alias, args))
+            futures.append(executor.submit(get_mya_pv_df, pv, alias, args))
         for f in futures:
             concurrent.futures.wait([f])
             if f.exception() is not None:
@@ -110,7 +119,6 @@ def get_mya_dfs(args):
             yield f.result()
 
 def plot(df, args):
-    # pl
     import pandas
     import matplotlib.pyplot as plt
     import matplotlib.dates as dates
@@ -159,7 +167,7 @@ def calib(df, alias, deadband=0):
 if __name__ == '__main__':
     cli,args = get_cli()
     import pandas
-    dfs = list(get_mya_dfs(args))
+    dfs = list(get_mya_pv_dfs(args))
     df = pandas.concat(dfs).sort_values('d')
     if args.b.isdigit() and args.e.isdigit():
         runs = list(filter(lambda x: x[1], get_rcdb_runs(int(args.b),int(args.e))))
