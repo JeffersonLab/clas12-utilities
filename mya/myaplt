@@ -127,7 +127,7 @@ def plot(df, args):
     plt.gca().xaxis.set_major_locator(dates.DayLocator())
     import numpy
     for alias in args.alias:
-        if args.s: plt.step(df['d'].to_numpy(), df[alias].to_numpy(), where='pre')
+        if args.s: plt.step(df['d'].to_numpy(), df[alias].to_numpy(), where='post')
         else:      plt.plot(df['d'].to_numpy(), df[alias].to_numpy())
     plt.gcf().autofmt_xdate()
     plt.gca().xaxis.set_major_locator(MaxNLocator(nbins=10))
@@ -170,6 +170,9 @@ if __name__ == '__main__':
     import pandas
     dfs = list(get_mya_pv_dfs(args))
     df = pandas.concat(dfs).sort_values('d')
+    if args.v > 1:
+        with pandas.option_context('display.max_rows', None):
+            print(df, flush=True)
     if args.b.isdigit() and args.e.isdigit():
         runs = list(filter(lambda x: x[1], get_rcdb_datetimes(int(args.b),int(args.e))))
         rt = list(runticks(df['d'][0], df['d'][len(df['d'])-1], runs))
