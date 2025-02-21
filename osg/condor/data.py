@@ -160,6 +160,7 @@ def cluster_summary(args):
       ret[cluster_id]['eff'] = []
       ret[cluster_id]['ceff'] = []
       ret[cluster_id]['att'] = []
+      ret[cluster_id]['wallhr'] = []
     ret[cluster_id][get_status_key(job)] += 1
     ret[cluster_id]['done'] = ret[cluster_id]['TotalSubmitProcs']
     ret[cluster_id]['done'] -= ret[cluster_id]['held']
@@ -174,10 +175,18 @@ def cluster_summary(args):
       ret[cluster_id]['ceff'].append(x)
     except:
       pass
+    if job_states[job['JobStatus']] == 'C':
+      try:
+        x = float(job.get('wallhr'))
+        ret[cluster_id]['wallhr'].append(x)
+      except:
+        pass
   for v in ret.values():
     v['eff'] = condor.table.average(v['eff'])
     v['ceff'] = condor.table.average(v['ceff'])
     v['att'] = condor.table.average(v['att'])
+    v['ewallhr'] = condor.table.stddev(v['wallhr'])
+    v['wallhr'] = condor.table.average(v['wallhr'])
   return ret
 
 def site_summary(args):
@@ -192,7 +201,7 @@ def site_summary(args):
       sites[site]['wallhr'] = []
     sites[site]['total'] += 1
     sites[site][get_status_key(job)] += 1
-    if args.running or job_states[job['JobStatus']] == 'C':
+    if job_states[job['JobStatus']] == 'C':
       try:
         x = float(job.get('wallhr'))
         sites[site]['wallhr'].append(x)
