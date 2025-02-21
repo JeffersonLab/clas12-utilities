@@ -54,7 +54,7 @@ class Table():
     for i in range(1,len(self.columns)):
       if self.columns[i].tally is not None and len(self.tallies[i]) > 0:
         values.append(sum(self.tallies[i]))
-        if self.columns[i].tally is 'avg':
+        if self.columns[i].tally == 'avg':
           if values[-1] > 0:
             values[-1] = '%.1f' % (values[-1]/len(self.tallies[i]))
         else:
@@ -130,8 +130,8 @@ def average(alist):
     return null_field
 
 def stddev(alist):
-  if len(alist) > 0:
-    m = average(alist)
+  if len(alist) > 1:
+    m = sum(alist) / len(alist)
     s = sum([ (x-float(m))*(x-float(m)) for x in alist ])
     return '%.2f' % math.sqrt(s / len(alist))
   else:
@@ -148,10 +148,12 @@ summary_table.add_column('idle','idle',8,tally='sum')
 summary_table.add_column('held','held',8,tally='sum')
 summary_table.add_column('user','user',10)
 summary_table.add_column('gen','generator',9)
-summary_table.add_column('util','eff',4)
-summary_table.add_column('ceff','ceff',4)
-summary_table.add_column('att','att',4)
-summary_table.add_column('disk','DiskUsage',6)
+summary_table.add_column('util','eff',4,tally='avg')
+summary_table.add_column('ceff','ceff',4,tally='avg')
+summary_table.add_column('att','att',4,tally='avg')
+summary_table.add_column('disk','DiskUsage',6,tally='avg')
+summary_table.add_column('wall','wallhr',6,tally='avg')
+summary_table.add_column('ewall','ewallhr',6,tally='avg')
 
 site_table = CondorTable()
 site_table.add_column('site','MATCH_GLIDEIN_Site',26)
@@ -160,8 +162,8 @@ site_table.add_column('done','done',8,tally='sum')
 site_table.add_column('run','run',8,tally='sum')
 site_table.add_column('idle','idle',8,tally='sum')
 site_table.add_column('held','held',8,tally='sum')
-site_table.add_column('wallhr','wallhr',6)
-site_table.add_column('stddev','ewallhr',7)
+site_table.add_column('wall','wallhr',6,tally='avg')
+site_table.add_column('ewall','ewallhr',7,tally='avg')
 site_table.add_column('util','eff',4,tally='avg')
 
 job_table = CondorTable()
