@@ -70,6 +70,7 @@ def plot(args, logscale=0):
   h1ceff_site = {}
   h1att_gen = {}
   h1attq_gen = {}
+  h1wall_gen = {}
   h1eff = ROOT.TH1D('h1eff',';CPU Utilization',100,0,1.2)
   h2eff = ROOT.TH2D('h2eff',';Wall Hours;CPU Utilization',100,0,32,100,0,1.2)
   h1ceff = ROOT.TH1D('h1ceff',';Cumulative Efficiency',100,0,1.2)
@@ -105,9 +106,11 @@ def plot(args, logscale=0):
         h1eff_gen[gen] = h1eff.Clone('h1eff_gen_%s'%gen)
         h1ceff_gen[gen] = h1ceff.Clone('h1ceff_gen_%s'%gen)
         h1att_gen[gen] = h1att.Clone('h1att_gen_%s'%gen)
+        h1wall_gen[gen] = h1wall.Clone('h1wall_gen_%s'%gen)
         h1eff_gen[gen].Reset()
         h1ceff_gen[gen].Reset()
         h1att_gen[gen].Reset()
+        h1wall_gen[gen].Reset()
         generators.add(gen)
       if site not in h1eff_site:
         h1eff_site[site] = h1eff.Clone('h1eff_site_%s'%site)
@@ -130,6 +133,7 @@ def plot(args, logscale=0):
         h1ceff_gen[gen].Fill(ceff)
         h1ceff_site[site].Fill(ceff)
         h1wall_site[site].Fill(wall)
+        h1wall_gen[gen].Fill(wall)
       except:
         pass
 
@@ -171,6 +175,8 @@ def plot(args, logscale=0):
       generators[gen].append(h1att_gen[gen])
     if gen in h1attq_gen:
       generators[gen].append(h1attq_gen[gen])
+    if gen in h1wall_gen:
+      generators[gen].append(h1wall_gen[gen])
   leg_gen = ROOT.TLegend(0.6,0.95-len(generators)*0.08,0.9,0.95)
   leg_site = ROOT.TLegend(0.11,0.12,0.92,0.95)
   ii=1
@@ -190,6 +196,7 @@ def plot(args, logscale=0):
   root_store.extend(h1ceff_gen.values())
   root_store.extend(h1ceff_site.values())
   root_store.extend(h1wall_site.values())
+  root_store.extend(h1wall_gen.values())
 
   # there's only one we want stats on, this may be the easiest way:
   for x in root_store:
@@ -240,10 +247,9 @@ def plot(args, logscale=0):
     h1eff_gen[gen].Draw(opt)
     opt = 'SAME'
   can.cd(10) #####################################
-  ROOT.gPad.SetLogy(logscale)
   opt = ''
-  for ii,gen in enumerate(sorted(h1ceff_gen.keys())):
-    h1ceff_gen[gen].Draw(opt)
+  for ii,gen in enumerate(sorted(h1wall_gen.keys())):
+    h1wall_gen[gen].Draw(opt)
     opt = 'SAME'
   opt = ''
   for ii,site in enumerate(max_sites):
