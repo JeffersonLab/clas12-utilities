@@ -72,6 +72,7 @@ def munge(args):
   for condor_id,job in job_cache.items():
     job.update({'user':None,'gemc':None,'host':None,'condor':None,'stderr':None,'stdout':None,'eff':None,'ceff':None})
     job['generator'] = get_generator(job)
+    job['versions'] = get_versions(job)
     job['wallhr'] = calc_wallhr(job)
     job['condorid'] = '%d.%d'%(job['ClusterId'],job['ProcId'])
     job['gemcjob'] = '.'.join(job.get('Args').split()[0:2])
@@ -274,6 +275,22 @@ def get_exit_code(job):
       except:
         pass
   return None
+
+versions = {}
+def get_versions(job):
+  cid = job.get('ClusterId')
+  if cid not in versions:
+    versions[cid] = condor.table.null_field 
+    if job.get('UserLog') is not None:
+      job_script = os.path.dirname(os.path.dirname(job.get('UserLog')))+'/nodeScript.sh'
+      if os.path.isfile(job_script):
+        for line in open(job_script).readlines():
+          if line.find('module load gemc') >= 0:
+            m = re.search('module load (gemc/.*)',line.lower())
+            if m is not None:
+              versions[cid] = m.group(1)
+              break
+  return versions.get(cid)
 
 # cache generator names to only parse log once per cluster
 generators = {}
