@@ -175,7 +175,7 @@ def cluster_summary(args):
       ret[cluster_id]['ceff'].append(x)
     except:
       pass
-    if job_states[job['JobStatus']] == 'C':
+    if args.running or job_states[job['JobStatus']] == 'C':
       try:
         x = float(job.get('wallhr'))
         ret[cluster_id]['wallhr'].append(x)
@@ -201,7 +201,7 @@ def site_summary(args):
       sites[site]['wallhr'] = []
     sites[site]['total'] += 1
     sites[site][get_status_key(job)] += 1
-    if job_states[job['JobStatus']] == 'C':
+    if args.running or job_states[job['JobStatus']] == 'C':
       try:
         x = float(job.get('wallhr'))
         sites[site]['wallhr'].append(x)
