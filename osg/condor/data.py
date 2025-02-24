@@ -278,8 +278,9 @@ def get_exit_code(job):
 # cache generator names to only parse log once per cluster
 generators = {}
 def get_generator(job):
-  if job.get('ClusterId') not in generators:
-    generators['ClusterId'] = condor.table.null_field
+  cid = job.get('ClusterId')
+  if cid not in generators:
+    generators[cid] = condor.table.null_field
     if job.get('UserLog') is not None:
       job_script = os.path.dirname(os.path.dirname(job.get('UserLog')))+'/nodeScript.sh'
       for line in condor.util.readlines(job_script):
@@ -287,17 +288,17 @@ def get_generator(job):
         m = re.search('events with generator (.*) with options', line)
         if m is not None:
           if m.group(1).startswith('clas12-'):
-            generators['ClusterId'] = m.group(1)[7:]
+            generators[cid] = m.group(1)[7:]
           else:
-            generators['ClusterId'] = m.group(1)
+            generators[cid] = m.group(1)
           break
         if line.find('echo lund event file:') == 0:
-          generators['ClusterId'] = 'lund'
+          generators[cid] = 'lund'
           break
         if line.find('gemc') == 0 and line.find('INPUT') < 0:
-          generators['ClusterId'] = 'gemc'
+          generators[cid] = 'gemc'
           break
-  return generators.get('ClusterId')
+  return generators.get(cid)
 
 def _make_timeline_entry(args):
   data = {}
