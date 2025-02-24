@@ -71,6 +71,7 @@ def plot(args, logscale=0):
   h1att_gen = {}
   h1attq_gen = {}
   h1wall_gen = {}
+  h1wall_vers = {}
   h1eff = ROOT.TH1D('h1eff',';CPU Utilization',100,0,1.2)
   h2eff = ROOT.TH2D('h2eff',';Wall Hours;CPU Utilization',100,0,32,100,0,1.2)
   h1ceff = ROOT.TH1D('h1ceff',';Cumulative Efficiency',100,0,1.2)
@@ -81,6 +82,7 @@ def plot(args, logscale=0):
   h1attq = h1att.Clone('h1attq')
   h1attq.GetXaxis().SetTitle('Queued Job Attempts')
   generators = set()
+  versions = set()
 
   # read condor data, fill histos:
   for condor_id,job in condor.data.get_jobs(args):
@@ -100,8 +102,13 @@ def plot(args, logscale=0):
       eff = float(job.get('eff'))
       ceff = float(job.get('ceff'))
       wall = float(job.get('wallhr'))
+      vers = job.get('versions')
       cwall = float(job.get('CumulativeSlotTime'))/60/60
       site = job.get('MATCH_GLIDEIN_Site')
+      if vers not in h1wall_vers:
+        h1wall_vers[vers] = h1wall.Clone('h1wall_vers_%s'%vers)
+        h1wall_vers[vers].Reset()
+        versions.add(vers)
       if gen not in h1eff_gen:
         h1eff_gen[gen] = h1eff.Clone('h1eff_gen_%s'%gen)
         h1ceff_gen[gen] = h1ceff.Clone('h1ceff_gen_%s'%gen)
@@ -134,6 +141,7 @@ def plot(args, logscale=0):
         h1ceff_site[site].Fill(ceff)
         h1wall_site[site].Fill(wall)
         h1wall_gen[gen].Fill(wall)
+        h1wall_vers[vers].Fill(wall)
       except:
         pass
 
@@ -144,6 +152,7 @@ def plot(args, logscale=0):
   set_histos_max(h1eff_site.values())
   set_histos_max(h1ceff_site.values())
   set_histos_max(h1wall_site.values())
+  set_histos_max(h1wall_gen.values())
   set_histos_max(h1attq_gen.values())
   set_histos_max(h1att_gen.values())
 
@@ -179,6 +188,7 @@ def plot(args, logscale=0):
       generators[gen].append(h1wall_gen[gen])
   leg_gen = ROOT.TLegend(0.6,0.95-len(generators)*0.08,0.9,0.95)
   leg_site = ROOT.TLegend(0.11,0.12,0.92,0.95)
+  leg_vers = ROOT.TLegend(0.6,0.95-len(versions)*0.08,0.9,0.95)
   ii=1
   for gen,histos in generators.items():
     for jj,h in enumerate(histos):
@@ -187,8 +197,9 @@ def plot(args, logscale=0):
         leg_gen.AddEntry(h, gen, "l")
     ii += 1
 
+
   # cache them globally to keep in scope:
-  root_store = [h1eff, h2eff, h1ceff, h2ceff, h2att, h1att, h1attq, h1wall, leg_gen, leg_site, can]
+  root_store = [h1eff, h2eff, h1ceff, h2ceff, h2att, h1att, h1attq, h1wall, leg_gen, leg_site, leg_vers, can]
   root_store.extend(h1att_gen.values())
   root_store.extend(h1attq_gen.values())
   root_store.extend(h1eff_gen.values())
@@ -197,6 +208,7 @@ def plot(args, logscale=0):
   root_store.extend(h1ceff_site.values())
   root_store.extend(h1wall_site.values())
   root_store.extend(h1wall_gen.values())
+  root_store.extend(h1wall_vers.values())
 
   # there's only one we want stats on, this may be the easiest way:
   for x in root_store:
@@ -241,16 +253,24 @@ def plot(args, logscale=0):
   ROOT.gPad.SetLogz(logscale)
   h2eff.Draw('COLZ')
   can.cd(9) #####################################
-  ROOT.gPad.SetLogy(logscale)
   opt = ''
-  for ii,gen in enumerate(sorted(h1eff_gen.keys())):
-    h1eff_gen[gen].Draw(opt)
+  for ii,vers in enumerate(sorted(h1wall_vers.keys())):
+    h1wall_vers[vers].SetLineColor(ii+1)
+    h1wall_vers[vers].Draw(opt)
+    leg_vers.AddEntry(h1wall_vers[vers], vers, 'l')
     opt = 'SAME'
+  leg_vers.Draw()
+  #ROOT.gPad.SetLogy(logscale)
+  #opt = ''
+  #for ii,gen in enumerate(sorted(h1eff_gen.keys())):
+  #  h1eff_gen[gen].Draw(opt)
+  #  opt = 'SAME'
   can.cd(10) #####################################
   opt = ''
   for ii,gen in enumerate(sorted(h1wall_gen.keys())):
     h1wall_gen[gen].Draw(opt)
     opt = 'SAME'
+    leg_gen.Draw()
   opt = ''
   for ii,site in enumerate(max_sites):
     if ii > 10:
