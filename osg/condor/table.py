@@ -97,6 +97,8 @@ class CondorTable(Table):
     ret = value
     if value is None or value == 'undefined':
       ret = null_field
+    elif name == 'benchmark':
+      ret = value['str'] 
     elif name == 'NumJobStarts':
       if value == 0:
         ret = null_field
@@ -183,6 +185,7 @@ job_table.add_column('end','CompletionDate',12)
 job_table.add_column('user','user',10)
 job_table.add_column('gen','generator',9)
 job_table.add_column('disk','DiskUsage',6)
+job_table.add_column('dt','benchmark',25)
 
 def tail_log(job, nlines):
   print(''.ljust(80,'#'))
