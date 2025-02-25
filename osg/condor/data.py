@@ -104,6 +104,7 @@ def munge(args):
     # get exit code from log files (since it's not always available from condor):
     if args.parseexit and job_states[job['JobStatus']] == 'H':
       job['ExitCode'] = get_exit_code(job)
+    job['benchmark'] = get_benchmarks(job)
     tally(job)
 
 def tally(job):
@@ -276,6 +277,25 @@ def get_exit_code(job):
         pass
   return None
 
+tasks = ['gen','gemc','bg','dn','rec']
+labels = {'gen':'GENERATOR','gemc':'GEMC','bg':'BG-MERGING','dn':'DE-NOISING','rec':'RECONSTRUCTION'}
+def get_benchmarks(job):
+  x = dict(zip(tasks,[0]*len(tasks)))
+#  print(job.get('stdout'))
+  for line in condor.util.readlines(job.get('stdout')):
+    for t in tasks:
+      l = f'{labels[t]} (.*): (\d+)'
+      m = re.search(l,line)
+      if m is not None:
+        if m.group(1) == 'START':
+          x[t] = -int(m.group(2))
+        elif m.group(1) == 'END' and x[t] != 0:
+          x[t] = (int(m.group(2)) + int(x[t])) / 60 / 60
+#    if x['rec'] > 0:
+#      break
+  x['str'] = '%.1f/%.1f/%.1f/%.1f/%.1f' % (x['gen'],x['gemc'],x['bg'],x['dn'],x['rec'])
+  return x
+
 versions = {}
 def get_versions(job):
   cid = job.get('ClusterId')
@@ -283,8 +303,7 @@ def get_versions(job):
     versions[cid] = condor.table.null_field 
     if job.get('UserLog') is not None:
       job_script = os.path.dirname(os.path.dirname(job.get('UserLog')))+'/nodeScript.sh'
-      if os.path.isfile(job_script):
-        for line in open(job_script).readlines():
+      for line in condor.util.readlines(job_script):
           if line.find('module load gemc') >= 0:
             m = re.search('module load (gemc/.*)',line.lower())
             if m is not None:
