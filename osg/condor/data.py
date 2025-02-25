@@ -204,6 +204,7 @@ def site_summary(args):
       sites[site] = job.copy()
       sites[site].update(job_counts.copy())
       sites[site]['wallhr'] = []
+      sites[site]['benchmarks'] = []
     sites[site]['total'] += 1
     sites[site][get_status_key(job)] += 1
     if args.running or job_states[job['JobStatus']] == 'C':
@@ -212,9 +213,11 @@ def site_summary(args):
         sites[site]['wallhr'].append(x)
       except:
         pass
+      sites[site]['benchmarks'].append(job.get('benchmark')['list'])
   for site in sites.keys():
     sites[site]['ewallhr'] = condor.table.stddev(sites[site]['wallhr'])
     sites[site]['wallhr'] = condor.table.average(sites[site]['wallhr'])
+    sites[site]['benchmarks'] = condor.table.average(sites[site]['benchmarks'])
     if args.hours <= 0:
       sites[site]['done'] = condor.table.null_field
   return condor.util.sort_dict(sites, 'total')
