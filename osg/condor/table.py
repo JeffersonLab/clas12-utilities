@@ -173,6 +173,7 @@ site_table.add_column('held','held',8,tally='sum')
 site_table.add_column('wall','wallhr',6,tally='avg')
 site_table.add_column('ewall','ewallhr',7,tally='avg')
 site_table.add_column('util','eff',4,tally='avg')
+site_table.add_column('dt','benchmarks',25)
 
 job_table = CondorTable()
 job_table.add_column('condor','condorid',13)
