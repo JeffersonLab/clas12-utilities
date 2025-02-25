@@ -125,9 +125,14 @@ class CondorTable(Table):
         pass
     return ret
 
-def average(alist):
+def average(alist, precision=2):
   if len(alist) > 0:
-    return '%.2f' % (sum(alist) / len(alist))
+    if type(alist[0]) is list:
+      l = alist
+      x = [ average( [ l[i][j] for i in range(len(l)) ] ) for j in range(len(l[0])) ]
+      return '/'.join(x)
+    else:
+      return (f'%.{precision}f') % (sum(alist) / len(alist))
   else:
     return null_field
 
@@ -156,6 +161,7 @@ summary_table.add_column('att','att',4,tally='avg')
 summary_table.add_column('disk','DiskUsage',6,tally='avg')
 summary_table.add_column('wall','wallhr',6,tally='avg')
 summary_table.add_column('ewall','ewallhr',6,tally='avg')
+summary_table.add_column('dt','benchmarks',25)
 
 site_table = CondorTable()
 site_table.add_column('site','MATCH_GLIDEIN_Site',26)
