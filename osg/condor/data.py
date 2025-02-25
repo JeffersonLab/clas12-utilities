@@ -163,6 +163,7 @@ def cluster_summary(args):
       ret[cluster_id]['ceff'] = []
       ret[cluster_id]['att'] = []
       ret[cluster_id]['wallhr'] = []
+      ret[cluster_id]['benchmarks'] = []
     ret[cluster_id][get_status_key(job)] += 1
     ret[cluster_id]['done'] = ret[cluster_id]['TotalSubmitProcs']
     ret[cluster_id]['done'] -= ret[cluster_id]['held']
@@ -183,12 +184,14 @@ def cluster_summary(args):
         ret[cluster_id]['wallhr'].append(x)
       except:
         pass
+      ret[cluster_id]['benchmarks'].append(job.get('benchmark')['list'])        
   for v in ret.values():
     v['eff'] = condor.table.average(v['eff'])
     v['ceff'] = condor.table.average(v['ceff'])
     v['att'] = condor.table.average(v['att'])
     v['ewallhr'] = condor.table.stddev(v['wallhr'])
     v['wallhr'] = condor.table.average(v['wallhr'])
+    v['benchmarks'] = condor.table.average(v['benchmarks'])
   return ret
 
 def site_summary(args):
@@ -293,6 +296,7 @@ def get_benchmarks(job):
           x[t] = (int(m.group(2)) + int(x[t])) / 60 / 60
 #    if x['rec'] > 0:
 #      break
+  x['list'] = [x['gen'],x['gemc'],x['bg'],x['dn'],x['rec']]
   x['str'] = '%.1f/%.1f/%.1f/%.1f/%.1f' % (x['gen'],x['gemc'],x['bg'],x['dn'],x['rec'])
   return x
 
