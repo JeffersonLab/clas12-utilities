@@ -253,6 +253,7 @@ def plot(args, logscale=0):
   ROOT.gPad.SetLogz(logscale)
   h2eff.Draw('COLZ')
   can.cd(9) #####################################
+  ROOT.gPad.SetLogy(logscale)
   opt = ''
   for ii,vers in enumerate(sorted(h1wall_vers.keys())):
     h1wall_vers[vers].SetLineColor(ii+1)
@@ -266,6 +267,7 @@ def plot(args, logscale=0):
   #  h1eff_gen[gen].Draw(opt)
   #  opt = 'SAME'
   can.cd(10) #####################################
+  ROOT.gPad.SetLogy(logscale)
   opt = ''
   for ii,gen in enumerate(sorted(h1wall_gen.keys())):
     h1wall_gen[gen].Draw(opt)
