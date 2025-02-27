@@ -6,10 +6,10 @@ dirname="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 
 mkdir -p /osgpool/hallb/clas12/gemc/daily
 timestamp=$(date +%Y%m%d_%H%M%S)
-plotfile=$(mktemp /osgpool/hallb/clas12/gemc/daily/$timestamp\_XXXXXX.pdf)
+plotfile=$(mktemp /osgpool/hallb/clas12/gemc/daily/$timestamp\_XXXXXX.png)
 emailbody=$(mktemp /osgpool/hallb/clas12/gemc/daily/$timestamp\_XXXXXX.txt)
 touch $emailbody
-plotfilelogscale=${plotfile%%.*}-logscale.pdf
+plotfilelogscale=${plotfile%%.*}-logscale.png
 
 cvmfs_cache=$HOME/cvmfs-errors.txt
 vacate_cache=$HOME/vacate-stalls.txt
@@ -50,7 +50,7 @@ $dirname/condor-probe.py -completed -hours 24 -plot $plotfile >& /dev/null
 cat $emailbody | mail -s New-OSG-dAiLyDiGeSt $recipients
 
 chmod ag+r $plotfile $plotfilelogscale
-ln -sf $plotfile latest.pdf
-ln -sf $plotfilelogscale latest-logscale.pdf
-scp latest.pdf latest-logscale.pdf $plotfile $plotfilelogscale dtn1902:/volatile/clas12/osg/daily-digest
+ln -sf $plotfile latest.png
+ln -sf $plotfilelogscale latest-logscale.png
+scp latest.png latest-logscale.png $plotfile $plotfilelogscale dtn1902:/volatile/clas12/osg/daily-digest
 
