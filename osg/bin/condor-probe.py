@@ -15,11 +15,6 @@ from condor.cli import cli
 
 args = cli.parse_args(sys.argv[1:])
 
-if args.printexit:
-  for k,v in sorted(condor.data.exit_codes.items()):
-    print('%5d %s'%(k,v))
-  sys.exit(0)
-
 if args.held + args.idle + args.running + args.completed > 1:
   cli.error('Only one of -held/idle/running/completed is allowed.')
 

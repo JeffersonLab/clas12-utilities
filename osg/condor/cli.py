@@ -4,12 +4,14 @@
 ###
 
 import argparse
+import condor.data
 
 cli = argparse.ArgumentParser(description='Wrap condor_q and condor_history and add features for CLAS12.',
-    epilog='''Repeatable "limit" options are first OR\'d independently, then AND'd together, and if their
-    argument is prefixed with a dash ("-"), it is a veto (overriding the \'OR\').  For non-numeric arguments
-    starting with a dash, use the "-opt=arg" format.  Per-site wall-hour tallies ignore running jobs, unless
-    -running is specified.  Efficiencies are only calculated for completed jobs.''')
+    epilog='''(1) Repeatable "limit" options are first OR\'d independently, then AND'd together, and if their
+    argument is prefixed with a dash ("-"), it is a veto (overriding the \'OR\').  (2) For non-numeric arguments
+    starting with a dash, use the "-opt=arg" format.  (3) Per-site wall-hour tallies ignore running jobs, unless
+    -running is specified.  (4) Efficiencies and process wall hours are only calculated for completed jobs.  (5) Known exit codes are: '''
+    +', '.join(['%d=%s'%(k,v) for k,v in condor.data.exit_codes.items()]))
 cli.add_argument('-condor', default=[], metavar='#', action='append', type=int, help='limit by condor cluster id (repeatable)')
 cli.add_argument('-gemc', default=[], metavar='#', action='append', type=int, help='limit by gemc submission id (repeatable)')
 cli.add_argument('-user', default=[], action='append', type=str, help='limit by portal submitter\'s username (repeatable)')
@@ -34,7 +36,6 @@ cli.add_argument('-hold', default=False, action='store_true', help='send matchin
 cli.add_argument('-json', default=False, action='store_true', help='print full condor data in JSON format')
 cli.add_argument('-input', default=False, metavar='FILEPATH', type=str, help='read condor data from a JSON file instead of querying')
 cli.add_argument('-timeline', default=False, action='store_true', help='publish results for timeline generation')
-cli.add_argument('-parseexit', default=False, action='store_true', help='parse log files for exit codes')
-cli.add_argument('-printexit', default=False, action='store_true', help='just print the exit code definitions')
+cli.add_argument('-perf', default=False, action='store_true', help='get more performance info (from logs, slow), e.g. sub-wall times, exit codes')
 cli.add_argument('-plot', default=False, metavar='FILEPATH', const=True, nargs='?', help='generate plots (requires ROOT)')
 
