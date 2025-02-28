@@ -101,10 +101,12 @@ def munge(args):
         job['ceff'] = '%.2f'%(float(job.get('RemoteUserCpu'))/job.get('CumulativeSlotTime'))
       else:
         job['ceff'] = 0
-    # get exit code from log files (since it's not always available from condor):
-    if args.parseexit and job_states[job['JobStatus']] == 'H':
-      job['ExitCode'] = get_exit_code(job)
-    job['benchmark'] = get_benchmarks(job)
+    # get stuff from log files (if unavailable from condor):
+    if args.perf:
+      if job_states[job['JobStatus']] == 'H':
+        job['ExitCode'] = get_exit_code(job)
+      elif job_states[job['JobStatus']] == 'C':
+        job['benchmark'] = get_benchmarks(job)
     tally(job)
 
 def tally(job):
@@ -184,7 +186,8 @@ def cluster_summary(args):
         ret[cluster_id]['wallhr'].append(x)
       except:
         pass
-      ret[cluster_id]['benchmarks'].append(job.get('benchmark')['list'])        
+    if job_states[job['JobStatus']] == 'C':
+      ret[cluster_id]['benchmarks'].append(job.get('benchmark')['list'])
   for v in ret.values():
     v['eff'] = condor.table.average(v['eff'])
     v['ceff'] = condor.table.average(v['ceff'])
@@ -287,7 +290,6 @@ tasks = ['gen','gemc','bg','dn','rec']
 labels = {'gen':'GENERATOR','gemc':'GEMC','bg':'BG-MERGING','dn':'DE-NOISING','rec':'RECONSTRUCTION'}
 def get_benchmarks(job):
   x = dict(zip(tasks,[0]*len(tasks)))
-#  print(job.get('stdout'))
   for line in condor.util.readlines(job.get('stdout')):
     for t in tasks:
       l = f'{labels[t]} (.*): (\d+)'
