@@ -15,6 +15,9 @@ from condor.cli import cli
 
 args = cli.parse_args(sys.argv[1:])
 
+if args.xrootd:
+  args.perf = True
+
 if args.held + args.idle + args.running + args.completed > 1:
   cli.error('Only one of -held/idle/running/completed is allowed.')
 

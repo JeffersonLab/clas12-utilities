@@ -6,7 +6,7 @@ cache=$HOME/xrootd-errors.txt
 
 touch $cache
 
-$dirname/condor-probe.py -held -xrootd -parseexit >> $cache
+$dirname/condor-probe.py -held -xrootd >> $cache
 
 if ! [ -z $1 ]; then
     tmp=$(mktemp /tmp/gemc/xrootd.XXXXXX)
