@@ -248,7 +248,9 @@ def plot(args, logscale=0):
   leg_gen.Draw()
   can.cd(7)
   import datetime
-  leg_site.SetHeader(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
+  leg_site.SetHeader('%s  -  N = %d'%(
+              datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'),
+              sum([h.GetEntries() for h in h1eff_site.values()])))
   leg_site.Draw()
   can.cd(8) #####################################
   ROOT.gPad.SetLogz(logscale)
