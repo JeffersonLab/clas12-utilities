@@ -40,3 +40,4 @@ do
     sleep 5
 done
 
+#killall -u $USER dbus-daemon 
