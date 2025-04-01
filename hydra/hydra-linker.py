@@ -98,11 +98,11 @@ def link(data):
         new_png = png[:-4] + '_%.4d.png'%chunk
         src = idir + '/' + png
         dst = odir + '/' + new_png
+        dst = dst.replace(' ','_')
         if dryrun:
           print(src+'  ->  '+dst)
         elif not os.path.exists(dst):
           os.symlink(src, dst)
-          #print(src+'  ->  '+dst)
   return additions
 
 print('Starting hydra-linker ...')
