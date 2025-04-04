@@ -26,6 +26,8 @@ function munge {
 }
 
 echo 'See daily digest plots at (no longer attached to email!):' >> $emailbody
+echo 'https://clasweb.jlab.org/clas12offline/osg/daily-digest/latest-logscale.pdf' >> $emailbody
+echo 'https://clasweb.jlab.org/clas12offline/osg/daily-digest/latest.pdf' >> $emailbody
 echo 'https://clasweb.jlab.org/clas12offline/osg/daily-digest/?C=M;O=D' >> $emailbody
 
 echo Nodes with CVMFS issues in the past 24 hours: >> $emailbody
