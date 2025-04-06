@@ -25,20 +25,21 @@ function munge {
     fi
 }
 
-echo 'See daily digest plots at (no longer attached to email!):' >> $emailbody
-echo 'https://clasweb.jlab.org/clas12offline/osg/daily-digest/latest-logscale.pdf' >> $emailbody
-echo 'https://clasweb.jlab.org/clas12offline/osg/daily-digest/latest.pdf' >> $emailbody
-echo 'https://clasweb.jlab.org/clas12offline/osg/daily-digest/?C=M;O=D' >> $emailbody
+echo '--- Plots' >> $emailbody
+echo '    https://clasweb.jlab.org/clas12offline/osg/daily-digest/latest-logscale.pdf' >> $emailbody
+echo '    https://clasweb.jlab.org/clas12offline/osg/daily-digest/latest.pdf' >> $emailbody
+echo '    https://clasweb.jlab.org/clas12offline/osg/daily-digest/?C=M;O=D' >> $emailbody
+echo  >> $emailbody
 
-echo Nodes with CVMFS issues in the past 24 hours: >> $emailbody
+echo '--- Nodes with CVMFS issues in the past 24 hours:' >> $emailbody
 munge $cvmfs_cache >> $emailbody
 echo  >> $emailbody
 
-echo Nodes with XRootD issues in the past 24 hours: >> $emailbody
+echo '--- Nodes with XRootD issues in the past 24 hours:' >> $emailbody
 munge $xrootd_cache >> $emailbody
 echo >> $emailbody
 
-echo Vacated jobs in the past 24 hours: >> $emailbody
+echo '--- Nodes with Vacations in the past 24 hours:' >> $emailbody
 munge $vacate_cache >> $emailbody
 echo >> $emailbody
 
@@ -49,7 +50,7 @@ source /cvmfs/sft.cern.ch/lcg/app/releases/ROOT/6.26.04/x86_64-centos8-gcc85-opt
 
 $dirname/condor-probe.py -completed -hours 24 -plot $plotfile >& /dev/null
 
-cat $emailbody | mail -s New-OSG-dAiLyDiGeSt $recipients
+cat $emailbody | mail -s 'clas12 OSG daily digest' $recipients
 
 chmod ag+r $plotfile $plotfilelogscale
 ln -sf $plotfile latest.pdf
