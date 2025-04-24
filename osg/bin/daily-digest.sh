@@ -31,6 +31,10 @@ echo '    https://clasweb.jlab.org/clas12offline/osg/daily-digest/latest.pdf' >>
 echo '    https://clasweb.jlab.org/clas12offline/osg/daily-digest/?C=M;O=D' >> $emailbody
 echo  >> $emailbody
 
+echo '--- Timeline' >> $emailbody
+echo '    https://clasweb.jlab.org/clas12offline/osg/' >> $emailbody
+echo >> $emailbody
+
 echo '--- Nodes with CVMFS issues in the past 24 hours:' >> $emailbody
 munge $cvmfs_cache >> $emailbody
 echo  >> $emailbody
