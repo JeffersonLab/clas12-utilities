@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import sys
+sys.path.append('/u/scigroup/cvmfs/hallb/clas12/sw/noarch/rcdb/1.99.6/python')
+
 import argparse
 cli = argparse.ArgumentParser(description='Check for missing data on tape for recent runs in RCDB.',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 cli.add_argument('path', help='path on tape to search, e.g. /mss/clas12/rg-m/data')
@@ -118,6 +121,5 @@ while True:
   if age_hours_start > args.d*24:
       break
 
-import sys
 sys.exit(len(error_runs))
 
